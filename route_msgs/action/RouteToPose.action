@@ -1,0 +1,10 @@
+#goal definition
+route_msgs/Position	pose
+route_msgs/Node	node
+route_msgs/Link	link
+---	
+#result definition
+string result
+---	
+#feedback definition
+string status_code
