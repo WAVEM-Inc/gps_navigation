@@ -1,7 +1,6 @@
 #goal definition
-route_msgs/Position	pose
-route_msgs/Node	node
-route_msgs/Link	link
+route_msgs/Node	start_node
+route_msgs/Node end_node
 ---	
 #result definition
 string result
