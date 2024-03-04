@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <targets>
+      <target name="nuc-bt@192.168.0.234:22" type="ssh/sftp" uuid="91403669-3192-43b4-bd6a-76d671612ba0">
+        <config>
+          <option name="projectRootOnTarget" value="$USER_HOME$/gps_navigation" />
+          <option name="serverName" value="nuc-bt@192.168.0.234:22 password" />
+          <option name="useRsync" value="true" />
+        </config>
+      </target>
+    </targets>
+  </component>
+</project>

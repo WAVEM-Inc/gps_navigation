@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CLionExternalBuildManager">
+    <target id="b553e2c7-0a57-4bd0-9cae-407fd0705499" name="ros2" defaultType="TOOL">
+      <configuration id="10d38752-a91c-47e3-a982-2efbde6345ea" name="ros2">
+        <build type="TOOL">
+          <tool actionId="Tool_External Tools_ros2_humble" />
+        </build>
+        <clean type="TOOL">
+          <tool actionId="Tool_External Tools_ros2_humble" />
+        </clean>
+      </configuration>
+    </target>
+  </component>
+</project>
