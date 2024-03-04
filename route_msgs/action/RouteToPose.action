@@ -1,9 +1,9 @@
 #goal definition
 route_msgs/Node	start_node
 route_msgs/Node end_node
----	
+---
 #result definition
 string result
----	
+---
 #feedback definition
 string status_code
