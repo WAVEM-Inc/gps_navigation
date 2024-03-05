@@ -30,7 +30,7 @@ private :
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
-    rclcpp_action::Server<RouteToPose> route_to_pose_action_server_;
+    rclcpp_action::Server<RouteToPose>::SharedPtr route_to_pose_action_server_;
 
     //function
     rclcpp_action::GoalResponse route_to_pose_goal_handle(
@@ -40,9 +40,10 @@ private :
     rclcpp_action::CancelResponse route_to_pose_cancel_handle(
             const std::shared_ptr<RouteToPoseGoalHandler> goal_handle
             );
-    void handle_accepted(
+    void route_to_pose_accepted_handle(
             const std::shared_ptr<RouteToPoseGoalHandler> goal_handle
             );
+    void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler);
 };
 
 

@@ -6,7 +6,12 @@
 
 Center::Center() : Node("route_tracker_node") {
     // action_server
-
+        route_to_pose_action_server_ = rclcpp_action::create_server<RouteToPose>(
+                this,
+                "/route_to_pose",
+                std::bind(&Center::route_to_pose_goal_handle,this,std::placeholders::_1,std::placeholders::_2),
+                std::bind(&Center::route_to_pose_cancel_handle,this,std::placeholders::_1),
+                std::bind(&Center::route_to_pose_accepted_handle, this, std::placeholders::_1));
     // imu callback
     // gps callback
     // 장애물 정보 callback
@@ -30,6 +35,10 @@ Center::route_to_pose_cancel_handle(const std::shared_ptr<RouteToPoseGoalHandler
     return rclcpp_action::CancelResponse::REJECT;
 }
 
-void Center::handle_accepted(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+void Center::route_to_pose_accepted_handle(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+
+}
+
+void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler) {
 
 }
