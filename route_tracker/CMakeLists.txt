@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.8)
 project(route_tracker)
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-endif()
+if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif ()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(route_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
 
 include_directories(
         include
@@ -20,9 +21,10 @@ include_directories(
 )
 
 set(dependencies
-  rclcpp
-  route_msgs
-  std_msgs
+        rclcpp
+        rclcpp_action
+        route_msgs
+        std_msgs
 )
 
 set(source_list
@@ -45,12 +47,12 @@ add_executable(${node_name}
 )
 
 ament_target_dependencies(${node_name}
-  ${dependencies}
+        ${dependencies}
 )
 
 install(TARGETS
-  ${node_name}
-  DESTINATION lib/${PROJECT_NAME}
+        ${node_name}
+        DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

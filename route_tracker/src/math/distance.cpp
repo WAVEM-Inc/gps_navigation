@@ -13,7 +13,7 @@
  * @param second
  * @return
  * @brief
- *
+    *
     Haversine formula: a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
     c = 2 ⋅* atan2( √a, √(1−a) )
     d = R ⋅* c
@@ -31,7 +31,14 @@
               Math.sin(Δλ/2) * Math.sin(Δλ/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const d = R * c; // in metres
- */
+    * use guide
+    Distance distance;
+    std::shared_ptr<GpsData> gps_a = std::make_shared<GpsData>(35.09518,128.9606
+    );
+    std::shared_ptr<GpsData> gps_b = std::make_shared<GpsData>(35.0852,128.8786
+    );
+    distance.haversine_calculate_distance(*gps_a,*gps_b);
+*/
 double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
     const double earth_radius = 6371.0;
     const double d_lat = degree_to_radian(second.fn_get_latitude() - first.fn_get_latitude());
