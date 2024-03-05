@@ -14,7 +14,8 @@ include_directories(
         include
         include/${PROJECT_NAME}
         include/entity
-
+        include/route_tracker
+        include/math
         #${EXTERNAL_INCLUDE_DIRS}
 )
 
@@ -26,13 +27,13 @@ set(dependencies
 
 set(source_list
         src/main.cpp
-        src/center.cpp
-        include/route_tracker/center.hpp
         src/math/distance.cpp
         include/math/distance.hpp
         src/entity/gps_data.cpp
         include/entity/gps_data.hpp
         src/entity/gps_data.cpp
+        src/center.cpp
+        include/route_tracker/center.hpp
 )
 
 set(node_name

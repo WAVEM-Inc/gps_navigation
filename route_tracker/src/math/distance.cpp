@@ -4,8 +4,7 @@
 
 #include "math/distance.hpp"
 #include <math.h>
-#include <string>
-#include <iostream>
+#include "rclcpp/rclcpp.hpp"
 // latitude and longitude degree
 
 /**
@@ -35,13 +34,21 @@
  */
 double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
     const double earth_radius = 6371.0;
-    const double d_lat = second.fn_get_latitude() - first.fn_get_latitude();
-    const double d_lon = second.fn_get_longitude() - first.fn_get_longitude();
+    const double d_lat = degree_to_radian(second.fn_get_latitude() - first.fn_get_latitude());
+    const double d_lon = degree_to_radian(second.fn_get_longitude() - first.fn_get_longitude());
     // latitude and longitude degree change
-    const double convert_latitude = degree_to_radian(d_lat);
-    const double convert_longitude = degree_to_radian(d_lon);
-    const double a = std::pow(std::sin(d_lat/2), 2) + std::cos(convert_latitude) * std::cos(convert_longitude) * std::pow(std::sin(d_lon/2), 2);
+    const double convert_latitude_first= degree_to_radian(first.fn_get_latitude());
+    const double convert_latitude_second = degree_to_radian(second.fn_get_latitude());
+
+    const double a = std::pow(std::sin(d_lat/2), 2)
+            + std::cos(convert_latitude_first)
+            * std::cos(convert_latitude_second)
+            * std::pow(std::sin(d_lon/2), 2);
+
+    std::cout <<std::sqrt(a)<< " "<<sqrt(1-a)<<" "<<std::atan2(std::sqrt(a),sqrt(1-a));
     const double c = 2* std::atan2(std::sqrt(a),sqrt(1-a));
+    std::cout << "[RouteTracker] Distance , haversine_calculate_distance LINE : "<<__LINE__<<" "<<
+    first.fn_get_latitude()<<" " << first.fn_get_longitude() <<","<< second.fn_get_latitude()<<" "<<second.fn_get_longitude()<<" distance : "<<earth_radius * c<<std::endl;
     return earth_radius * c;
 }
 

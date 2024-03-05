@@ -20,3 +20,8 @@ void GpsData::fn_set_latitude(double latitude) {
 double GpsData::fn_get_longitude() const {
     return longitude_;
 }
+
+GpsData::GpsData(const double latitude, const double longitude) {
+    this->latitude_= latitude;
+    this->longitude_= longitude;
+}
