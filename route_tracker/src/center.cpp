@@ -6,12 +6,18 @@
 
 Center::Center() : Node("route_tracker_node") {
     // action_server
-        route_to_pose_action_server_ = rclcpp_action::create_server<RouteToPose>(
-                this,
-                "/route_to_pose",
-                std::bind(&Center::route_to_pose_goal_handle,this,std::placeholders::_1,std::placeholders::_2),
-                std::bind(&Center::route_to_pose_cancel_handle,this,std::placeholders::_1),
-                std::bind(&Center::route_to_pose_accepted_handle, this, std::placeholders::_1));
+    rclcpp::CallbackGroup::SharedPtr callback_group_action_server;
+    callback_group_action_server = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    route_to_pose_action_server_ = rclcpp_action::create_server<RouteToPose>(
+            this,
+            "/route_to_pose",
+            std::bind(&Center::route_to_pose_goal_handle, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&Center::route_to_pose_cancel_handle, this, std::placeholders::_1),
+            std::bind(&Center::route_to_pose_accepted_handle, this, std::placeholders::_1),
+            rcl_action_server_get_default_options(),
+            callback_group_action_server
+            );
     // imu callback
     // gps callback
     // 장애물 정보 callback
