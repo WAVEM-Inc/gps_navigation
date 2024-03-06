@@ -5,8 +5,9 @@
 #include "route_tracker/center.hpp"
 
 int main(int argc, char** argv){
-    Center cen;
-    cen.fn_run();
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<Center>());
+    rclcpp::shutdown();
     return 0;
 }
 

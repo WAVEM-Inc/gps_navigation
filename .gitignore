@@ -4,3 +4,4 @@ log/
 cmake-build-debug/
 cmake-build-remote-host-cmake/
 .idea/
+venv/

@@ -9,9 +9,13 @@
 // ros2
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
-
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/nav_sat_fix.hpp"
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
+#include "constants.hpp"
+#include "ros_parameter.hpp"
+
 /**
  * @brief
  *  [ ] action_server
@@ -31,8 +35,19 @@ private :
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
     rclcpp_action::Server<RouteToPose>::SharedPtr route_to_pose_action_server_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
+    rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gps_;
+    std::unique_ptr<Constants> constants_;
+    /// field action
+    std::shared_ptr<route_msgs::msg::Node> cur_node_;
+    std::shared_ptr<route_msgs::msg::Node> prev_node_;
+    // field entity
+    std::unique_ptr<RosParameter> ros_parameter_;
 
     //function
+    void ros_parameter_setting();
+    void ros_init();
+
     rclcpp_action::GoalResponse route_to_pose_goal_handle(
             const rclcpp_action::GoalUUID& uuid,
             std::shared_ptr<const RouteToPose::Goal> goal
@@ -44,6 +59,10 @@ private :
             const std::shared_ptr<RouteToPoseGoalHandler> goal_handle
             );
     void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler);
+
+    void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu);
+    void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps);
+
 };
 
 
