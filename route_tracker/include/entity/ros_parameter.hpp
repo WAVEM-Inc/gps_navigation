@@ -13,7 +13,6 @@ public:
 
 public :
     float imu_correction_;
-
 };
 
 

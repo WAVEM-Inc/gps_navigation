@@ -3,7 +3,8 @@ route_msgs/Node	start_node
 route_msgs/Node end_node
 ---
 #result definition
-string result
+uint8 result
 ---
 #feedback definition
-string status_code
+uint8 status_code
+string id

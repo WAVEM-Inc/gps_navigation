@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 find_package(route_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 
 include_directories(
         include
@@ -27,6 +28,7 @@ set(dependencies
         route_msgs
         std_msgs
         sensor_msgs
+        tf2
 )
 
 set(source_list
@@ -42,6 +44,11 @@ set(source_list
         src/math/imu_convert.cpp
         include/math/imu_convert.hpp
         include/entity/ros_parameter.hpp
+        include/entity/kec_car_data.hpp
+        include/entity/kec_car_data.hpp
+        include/entity/kec_car_data.hpp
+        src/entity/car.cpp
+        include/entity/car.hpp
 )
 
 set(node_name

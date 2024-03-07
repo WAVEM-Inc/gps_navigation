@@ -21,7 +21,6 @@ public :
     const std::string tp_name_route_to_pose_;
     const std::string tp_name_imu_;
     const std::string tp_name_gps_;
-
 };
 
 

@@ -4,9 +4,9 @@
 
 #include "route_tracker/center.hpp"
 
-
 Center::Center() : Node("route_tracker_node") {
     constants_= std::make_unique<Constants>();
+    imu_converter_= std::make_unique<ImuConvert>();
     ros_parameter_setting();
     ros_init();
 }
@@ -51,7 +51,16 @@ void Center::fn_run() {
 
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
+    // reset
+    if(cur_node_.use_count()>0) {
+        cur_node_.reset();
+    }
+    cur_node_=std::make_shared<route_msgs::msg::Node>(goal->start_node) ;
 
+    // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
+    if(prev_node_.use_count()>0){
+        return std::abs(prev_node_->heading-cur_node_->heading)>45? rclcpp_action::GoalResponse::REJECT:rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    }
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
@@ -70,7 +79,8 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 }
 
 void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
-
+    imu_converter_->set_correction(ros_parameter_->imu_correction_);
+    float imu_yaw = static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu));
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {

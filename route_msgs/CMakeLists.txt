@@ -12,6 +12,7 @@ set( msg_files
   "msg/Node.msg"
   "msg/Path.msg"
   "msg/Position.msg"
+  "msg/DriveState.msg"
   "action/RouteToPose.action"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
