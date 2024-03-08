@@ -17,12 +17,13 @@
 #include "entity/constants.hpp"
 #include "entity/ros_parameter.hpp"
 #include "math/imu_convert.hpp"
+#include "car.hpp"
 
 /**
  * @brief
  *  [ ] action_server
  *  [V] imu callback
- *  [ ] gps callback
+ *  [V] gps callback
  *  [ ] 장애물 정보 callback
  *  [ ] 경로 이탈 정보 callback
  *  [ ] 로봇 모드 timer
@@ -47,6 +48,8 @@ private :
     std::unique_ptr<RosParameter> ros_parameter_;
     // field math
     std::unique_ptr<ImuConvert> imu_converter_;
+    // field data
+    std::unique_ptr<Car> car_;
 
     //function
     void ros_parameter_setting();
@@ -65,6 +68,8 @@ private :
     void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler);
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu);
     void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps);
+
+    kec_car::NodeKind car_mode_determine(std::string car_node);
 };
 
 

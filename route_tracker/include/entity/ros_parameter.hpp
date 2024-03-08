@@ -8,11 +8,13 @@
 
 class RosParameter {
 public:
-    explicit RosParameter(float imu_correction) : imu_correction_(imu_correction) {
+    explicit RosParameter(float imu_correction, float max_speed, float driving_calibration_angle) : imu_correction_(imu_correction),max_speed_(max_speed),driving_calibration_angle_(driving_calibration_angle) {
     }
 
 public :
     float imu_correction_;
+    float max_speed_;
+    float driving_calibration_angle_;
 };
 
 

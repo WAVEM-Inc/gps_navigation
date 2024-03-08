@@ -3,3 +3,19 @@
 //
 
 #include "car.hpp"
+
+kec_car::NodeKind Car::get_node_kind() const {
+    return node_kind_;
+}
+
+void Car::set_node_kind(kec_car::NodeKind node_kind) {
+    node_kind_ = node_kind;
+}
+
+double Car::get_degree() const {
+    return degree_;
+}
+
+void Car::set_degree(double degree) {
+    degree_ = degree;
+}

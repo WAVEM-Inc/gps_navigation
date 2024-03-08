@@ -1,3 +1,5 @@
 route_tracker_node:
   ros__parameters:
     imu_correction: 1.0
+    max_speed: 3.0
+    driving_calibration_angle: 5.0
