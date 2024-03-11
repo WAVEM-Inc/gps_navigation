@@ -14,10 +14,10 @@ namespace kec_car{
         // 종료 노드
         kEndpoint,
         // 대기 노드
-        kWating
+        kWaiting
     };
     enum class ActionCode{
-        kWating,
+        kWaiting,
         kDriving,
         kStop,
         kSkip

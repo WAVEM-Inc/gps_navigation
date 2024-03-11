@@ -19,3 +19,15 @@ double Car::get_degree() const {
 void Car::set_degree(double degree) {
     degree_ = degree;
 }
+
+const GpsData Car::get_location() const {
+    return location_;
+}
+
+void Car::set_location(const GpsData location) {
+    location_ = location;
+}
+
+Car::Car() {
+
+}

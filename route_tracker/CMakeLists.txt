@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 find_package(route_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 
 include_directories(
@@ -29,6 +30,7 @@ set(dependencies
         std_msgs
         sensor_msgs
         tf2
+        geometry_msgs
 )
 
 set(source_list
@@ -44,11 +46,12 @@ set(source_list
         src/math/imu_convert.cpp
         include/math/imu_convert.hpp
         include/entity/ros_parameter.hpp
-        include/entity/kec_car_data.hpp
-        include/entity/kec_car_data.hpp
-        include/entity/kec_car_data.hpp
+        include/code/kec_car_data.hpp
+        include/code/kec_car_data.hpp
+        include/code/kec_car_data.hpp
         src/entity/car.cpp
         include/entity/car.hpp
+        include/code/kec_driving_data_code.hpp
 )
 
 set(node_name

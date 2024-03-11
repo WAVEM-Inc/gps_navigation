@@ -3,17 +3,23 @@
 //
 
 #include "route_tracker/center.hpp"
+#include "code/kec_driving_data_code.hpp"
+#include "distance.hpp"
+
+#define FIRST_ZONE 0.3
+#define SECOND_ZONE 0.6
+#define SETTING_ZERO 0.0
 
 Center::Center() : Node("route_tracker_node") {
-    constants_= std::make_unique<Constants>();
-    imu_converter_= std::make_unique<ImuConvert>();
-    car_= std::make_unique<Car>();
+    constants_ = std::make_unique<Constants>();
+    imu_converter_ = std::make_unique<ImuConvert>();
+    car_ = std::make_unique<Car>();
     ros_parameter_setting();
     ros_init();
 }
 
 void Center::ros_init() {
-    auto default_qos= rclcpp::QoS(rclcpp::SystemDefaultsQoS());
+    auto default_qos = rclcpp::QoS(rclcpp::SystemDefaultsQoS());
     // action_server
     rclcpp::CallbackGroup::SharedPtr callback_group_action_server;
     callback_group_action_server = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -31,14 +37,27 @@ void Center::ros_init() {
     cb_group_imu = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_imu_options;
     sub_imu_options.callback_group = cb_group_imu;
-    sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(constants_->tp_name_imu_,default_qos,std::bind(&Center::imu_callback,this,std::placeholders::_1),sub_imu_options);
+    sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(constants_->tp_name_imu_, default_qos,
+                                                                std::bind(&Center::imu_callback, this,
+                                                                          std::placeholders::_1), sub_imu_options);
 
     // gps callback
     rclcpp::CallbackGroup::SharedPtr cb_group_gps;
     cb_group_gps = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_gps_options;
     sub_gps_options.callback_group = cb_group_gps;
-    sub_gps_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(constants_->tp_name_gps_,default_qos,std::bind(&Center::gps_callback,this,std::placeholders::_1),sub_gps_options);
+    sub_gps_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(constants_->tp_name_gps_, default_qos,
+                                                                      std::bind(&Center::gps_callback, this,
+                                                                                std::placeholders::_1),
+                                                                      sub_gps_options);
+
+    // cmd_vel (이동 정보)
+    rclcpp::CallbackGroup::SharedPtr cb_group_cmd;
+    cb_group_cmd = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::PublisherOptions pub_cmd_options;
+    pub_cmd_options.callback_group = cb_group_cmd;
+    pub_cmd_ = this->create_publisher<geometry_msgs::msg::Twist>(constants_->tp_name_cmd_, default_qos,
+                                                                 pub_cmd_options);
 
     // 장애물 정보 callback
     // 경로 이탈 정보 callback
@@ -53,19 +72,23 @@ void Center::fn_run() {
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
     // reset
-    if(cur_node_.use_count()>0) {
+    if (cur_node_.use_count() > 0) {
         cur_node_.reset();
     }
-    cur_node_=std::make_shared<route_msgs::msg::Node>(goal->start_node) ;
+    if(next_node_.use_count()>0){
+        next_node_.reset();
+    }
+    cur_node_ = std::make_shared<route_msgs::msg::Node>(goal->start_node);
+    next_node_= std::make_shared<route_msgs::msg::Node>(goal->end_node);
 
     // 노트 타입에 따라 입력
     car_->set_node_kind(car_mode_determine(cur_node_->kind));
 
     // 연결 노드 일때 45도 이상 전환하지 못하도록
-    if(car_->get_node_kind()==kec_car::NodeKind::kConnecting) {
+    if (car_->get_node_kind() == kec_car::NodeKind::kConnecting) {
         // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
-            return std::abs(car_->get_degree() - cur_node_->heading) > 45 ? rclcpp_action::GoalResponse::REJECT
-                                                                           : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+        return std::abs(car_->get_degree() - cur_node_->heading) > 45 ? rclcpp_action::GoalResponse::REJECT
+                                                                      : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
@@ -80,10 +103,58 @@ void Center::route_to_pose_accepted_handle(const std::shared_ptr<RouteToPoseGoal
     std::thread{std::bind(&Center::route_to_pose_execute, this, std::placeholders::_1), goal_handle}.detach();
 }
 
-void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler) {
-
+void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+    RCLCPP_INFO(this->get_logger(), "Executing goal");
     // max speed
+    rclcpp::Rate loop_rate(1);
+    const auto goal = goal_handle->get_goal();
+    auto feedback = std::make_shared<RouteToPose::Feedback>();
+    auto result = std::make_shared<RouteToPose::Result>();
 
+    if (car_->get_node_kind() == kec_car::NodeKind::kConnecting) {
+        while (rclcpp::ok()) {
+            if (goal_handle->is_canceling()) {
+                result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
+                goal_handle->canceled(result);
+                RCLCPP_INFO(this->get_logger(), "Goal canceled");
+                return;
+            }
+            if(car_->get_location().fn_get_longitude()==0 && car_->get_location().fn_get_latitude()==0){
+                feedback->status_code=static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
+                goal_handle->publish_feedback(feedback);
+                RCLCPP_INFO(this->get_logger(), "Publish feedback");
+                continue;
+            }
+
+            // 목적지 도착 여부
+            // distance_from_perpendicular_line();
+            std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+            GpsData start_node_position(cur_node_->position.latitude,cur_node_->position.longitude);
+            GpsData end_node_position(next_node_->position.latitude, next_node_->position.longitude);
+            GpsData cur_location(car_->get_location().fn_get_latitude(),car_->get_location().fn_get_longitude());
+            // 도착지 거리
+            // 파라미터 작업
+            if(center_distance->distance_from_perpendicular_line(start_node_position,end_node_position,cur_location)<=ros_parameter_->goal_distance_){
+                break;
+            }
+            // 이벤트 판단
+
+            //
+            // 직진 주행 명령
+            geometry_msgs::msg::Twist cmd_vel=calculate_straight_movement(0.1);
+            pub_cmd_->publish(cmd_vel);
+            // if 도착 명령 확인
+            // else
+            feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kWorking);
+            goal_handle->publish_feedback(feedback);
+            RCLCPP_INFO(this->get_logger(), "Publish feedback");
+        }
+        if (rclcpp::ok()) {
+            result->result=static_cast<int>(kec_driving_code::Result::kSuccess);
+            goal_handle->succeed(result);
+            RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+        }
+    }
 }
 
 /**
@@ -92,44 +163,84 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
  */
 void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
     imu_converter_->set_correction(ros_parameter_->imu_correction_);
-    car_->set_degree( static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
+    car_->set_degree(static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
-
+    GpsData data(gps->latitude,gps->longitude);
+    car_->set_location(data);
 }
 
 void Center::ros_parameter_setting() {
-    this->declare_parameter<float>("imu_correction",0.0);
-    this->declare_parameter<float>("max_speed",0.0);
-    this->declare_parameter<float>("driving_calibration_angle",0.0);
+    this->declare_parameter<float>("imu_correction", SETTING_ZERO);
+    this->declare_parameter<float>("max_speed", SETTING_ZERO);
+    this->declare_parameter<float>("driving_calibration_max_angle", SETTING_ZERO);
+    this->declare_parameter<float>("driving_calibration_min_angle", SETTING_ZERO);
+    this->declare_parameter<float>("driving_calibration_angle_increase", SETTING_ZERO);
+    this->declare_parameter<float>("goal_distance",SETTING_ZERO);
     float imu_correction;
     float max_speed;
-    float driving_calibration_angle;
-    if(this->get_parameter("imu_correction",imu_correction)){
-        std::cout<<imu_correction<<std::endl;
-    }
-    if(this->get_parameter("max_speed",max_speed)){
-        std::cout<<max_speed<<std::endl;
-    }
-    if(this->get_parameter("driving_calibration_angle",driving_calibration_angle)){
-        std::cout<<driving_calibration_angle<<std::endl;
-    }
-    ros_parameter_= std::make_unique<RosParameter>(imu_correction,max_speed,driving_calibration_angle);
+    float driving_calibration_min_angle;
+    float driving_calibration_max_angle;
+    float driving_calibration_angle_increase;
+    float goal_distance;
+    this->get_parameter("imu_correction", imu_correction);
+    this->get_parameter("max_speed", max_speed);
+    this->get_parameter("driving_calibration_angle", driving_calibration_min_angle);
+    this->get_parameter("driving_calibration_angle", driving_calibration_max_angle);
+    this->get_parameter("driving_calibration_angle_increase", driving_calibration_angle_increase);
+    this->get_parameter("goal_distance",goal_distance);
+    ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
+                                                    max_speed,
+                                                    driving_calibration_max_angle,
+                                                    driving_calibration_min_angle,
+                                                    driving_calibration_angle_increase,
+                                                    goal_distance);
 }
 
 kec_car::NodeKind Center::car_mode_determine(std::string car_node) {
     static const std::unordered_map<std::string, kec_car::NodeKind> node_kind_map = {
             {"intersection", kec_car::NodeKind::kIntersection},
-            {"connecting", kec_car::NodeKind::kConnecting},
-            {"endpoint", kec_car::NodeKind::kEndpoint},
-            {"waiting", kec_car::NodeKind::kWating}
+            {"connecting",   kec_car::NodeKind::kConnecting},
+            {"endpoint",     kec_car::NodeKind::kEndpoint},
+            {"waiting",      kec_car::NodeKind::kWaiting}
     };
     auto it = node_kind_map.find(car_node);
     if (it != node_kind_map.end()) {
         return it->second;
     } else {
         // 기본값으로 대기 노드 설정
-        return kec_car::NodeKind::kWating;
+        return kec_car::NodeKind::kWaiting;
     }
+}
+
+geometry_msgs::msg::Twist Center::calculate_straight_movement(float acceleration) {
+    geometry_msgs::msg::Twist result;
+    result.linear.set__x(acceleration);
+    result.linear.set__y(SETTING_ZERO);
+    result.linear.set__z(SETTING_ZERO);
+    // 현재 각도-노드진입 탈출 각도를 통하여 링크와 얼마나 다른 방향으로 가는지 확인
+    const double link_degree = car_->get_degree() - cur_node_->heading;
+    // 각도에 따라 더 틀지 결정
+    const double first_zone = ros_parameter_->driving_calibration_max_angle_ * FIRST_ZONE;
+    const double second_zone = ros_parameter_->driving_calibration_max_angle_ * SECOND_ZONE;
+    // 왼쪽/ 오른쪽
+    const double direction = (link_degree > 0) ? ros_parameter_->driving_calibration_angle_increase_ : -ros_parameter_->driving_calibration_angle_increase_;
+    if(link_degree > ros_parameter_->driving_calibration_min_angle_) {
+        if (link_degree < first_zone) {
+            result.angular.set__z(direction);
+        } else if (link_degree > first_zone &&
+                   link_degree < second_zone) {
+            result.angular.set__z(direction * 2);
+        } else if (link_degree > second_zone){
+            result.angular.set__z(direction * 3);
+        }
+    }
+    else{
+        //직선 주행
+        result.angular.set__x(SETTING_ZERO);
+        result.angular.set__y(SETTING_ZERO);
+        result.angular.set__z(SETTING_ZERO);
+    }
+    return result;
 }

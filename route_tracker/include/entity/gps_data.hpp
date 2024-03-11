@@ -9,6 +9,7 @@ private :
     double latitude_;
     double longitude_;
 public:
+    GpsData();
     GpsData(const double latitude, const double longitude);
     void fn_set_longitude(double longitude);
     void fn_set_latitude(double latitude);

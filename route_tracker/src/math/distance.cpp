@@ -62,3 +62,33 @@ double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
 double Distance::degree_to_radian(const double degree) {
     return degree * (M_PI / 180.0);
 }
+
+//double Distance::distance_from_perpendicular_line(double x1, double y1, double x2, double y2, double x0, double y0) {
+double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place) {
+
+        double distance=0.0;
+        //   if (y2 - y1) == 0:
+        if (end_node.fn_get_longitude() - start_node.fn_get_longitude() == 0) {
+            //distance = distanceBetween(x2, y0, x0, y0)
+            std::unique_ptr<GpsData> temp_first= std::make_unique<GpsData>(end_node.fn_get_latitude(),cur_place.fn_get_longitude());
+            distance = haversine_calculate_distance(std::move(*temp_first),cur_place);
+        }
+        //elif (x2 - x1) == 0:
+        else if (end_node.fn_get_latitude() - start_node.fn_get_latitude() == 0) {
+            std::unique_ptr<GpsData> temp_first= std::make_unique<GpsData>(cur_place.fn_get_latitude(),end_node.fn_get_longitude());
+            //distance = distanceBetween(x0, y2, x0, y0)
+            distance = haversine_calculate_distance(std::move(*temp_first), cur_place);
+        } else {
+            // 시작 점을 지나는 직선의 기울기는
+            double perpendicular_m = (end_node.fn_get_latitude() - start_node.fn_get_latitude()) / (end_node.fn_get_longitude() - start_node.fn_get_longitude()) * -1;
+            // 시작 점을 지나는 직선의 방정식은 y - y1 = perpendicular_m * (x - x1)
+            // 이 직선과 외부 점 사이의 거리를 계산
+            distance = std::abs(
+                    (perpendicular_m * cur_place.fn_get_latitude() - cur_place.fn_get_longitude() + end_node.fn_get_longitude() - perpendicular_m * end_node.fn_get_latitude())
+                    / std::sqrt(1 + perpendicular_m * perpendicular_m)
+                    );
+        }
+        return distance;
+    }
+
+Distance::Distance() {}

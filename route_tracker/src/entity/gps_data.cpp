@@ -25,3 +25,7 @@ GpsData::GpsData(const double latitude, const double longitude) {
     this->latitude_= latitude;
     this->longitude_= longitude;
 }
+GpsData::GpsData() {
+    this->latitude_=0;
+    this->longitude_=0;
+}

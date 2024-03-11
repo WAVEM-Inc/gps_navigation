@@ -9,8 +9,11 @@
 #include "entity/gps_data.hpp"
 
 class Distance {
-    public :
-        double haversine_calculate_distance(GpsData first, GpsData second);
+public :
+    Distance();
+
+    double haversine_calculate_distance(GpsData first, GpsData second);
+        double distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place);
 private :
         double degree_to_radian(const double degree);
 };

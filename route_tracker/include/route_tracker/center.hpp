@@ -11,13 +11,14 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
 #include "route_msgs/msg/drive_state.hpp"
 #include "entity/constants.hpp"
 #include "entity/ros_parameter.hpp"
 #include "math/imu_convert.hpp"
-#include "car.hpp"
+#include "entity/car.hpp"
 
 /**
  * @brief
@@ -38,12 +39,17 @@ private :
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
     rclcpp_action::Server<RouteToPose>::SharedPtr route_to_pose_action_server_;
+
+    // field subscribe
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gps_;
+    //field publish
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_;
+    //
     std::unique_ptr<Constants> constants_;
     /// field action
     std::shared_ptr<route_msgs::msg::Node> cur_node_;
-    std::shared_ptr<route_msgs::msg::Node> prev_node_;
+    std::shared_ptr<route_msgs::msg::Node> next_node_;
     // field entity
     std::unique_ptr<RosParameter> ros_parameter_;
     // field math
@@ -65,11 +71,12 @@ private :
     void route_to_pose_accepted_handle(
             const std::shared_ptr<RouteToPoseGoalHandler> goal_handle
             );
-    void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handler);
+    void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu);
     void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps);
 
     kec_car::NodeKind car_mode_determine(std::string car_node);
+    geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
 };
 
 
