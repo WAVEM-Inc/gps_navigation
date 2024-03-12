@@ -12,9 +12,15 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
 #include "route_msgs/msg/drive_state.hpp"
+#include "route_msgs/msg/drive_break.hpp"
+#include "routedevation_msgs/msg/status.hpp"
+#include "obstacle_msgs/msg/status.hpp"
+
+//
 #include "entity/constants.hpp"
 #include "entity/ros_parameter.hpp"
 #include "math/imu_convert.hpp"
@@ -33,7 +39,7 @@
 class Center : public rclcpp::Node{
 public :
     explicit Center();
-    void fn_run();
+
 private :
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
@@ -43,8 +49,13 @@ private :
     // field subscribe
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gps_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
+    rclcpp::Subscription<routedevation_msgs::msg::Status>::SharedPtr sub_route_deviation_;
+    rclcpp::Subscription<obstacle_msgs::msg::Status>::SharedPtr sub_obstacle_status_;
+
     //field publish
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_;
+    rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break_;
     //
     std::unique_ptr<Constants> constants_;
     /// field action
@@ -74,9 +85,12 @@ private :
     void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu);
     void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps);
-
+    void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom);
+    void route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status);
+    void obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status);
     kec_car::NodeKind car_mode_determine(std::string car_node);
     geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
+    bool straight_judgment(kec_car::NodeKind kind);
 };
 
 

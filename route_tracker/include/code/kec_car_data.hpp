@@ -11,6 +11,8 @@ namespace kec_car{
         kIntersection,
         //직진 노드
         kConnecting,
+        //작업 완료 노드
+        kComplete,
         // 종료 노드
         kEndpoint,
         // 대기 노드
@@ -25,7 +27,7 @@ namespace kec_car{
     enum class DrivingMode{
         kStraight,
         kRecovery,
-        kTurn,
+        kStop,
         kParking,
         kCrossroads
     };

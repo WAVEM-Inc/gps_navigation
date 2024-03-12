@@ -17,7 +17,9 @@ Center::Center() : Node("route_tracker_node") {
     ros_parameter_setting();
     ros_init();
 }
-
+/**
+ *
+ */
 void Center::ros_init() {
     auto default_qos = rclcpp::QoS(rclcpp::SystemDefaultsQoS());
     // action_server
@@ -32,6 +34,9 @@ void Center::ros_init() {
             rcl_action_server_get_default_options(),
             callback_group_action_server
     );
+    //==
+    // subscribe
+    //==
     // imu callback
     rclcpp::CallbackGroup::SharedPtr cb_group_imu;
     cb_group_imu = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -40,7 +45,6 @@ void Center::ros_init() {
     sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(constants_->tp_name_imu_, default_qos,
                                                                 std::bind(&Center::imu_callback, this,
                                                                           std::placeholders::_1), sub_imu_options);
-
     // gps callback
     rclcpp::CallbackGroup::SharedPtr cb_group_gps;
     cb_group_gps = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -51,6 +55,42 @@ void Center::ros_init() {
                                                                                 std::placeholders::_1),
                                                                       sub_gps_options);
 
+    // odom callback
+    rclcpp::CallbackGroup::SharedPtr cb_group_odom;
+    cb_group_odom = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions sub_odom_options;
+    sub_odom_options.callback_group = cb_group_odom;
+    sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(constants_->tp_name_odom_,default_qos,std::bind(&Center::odom_callback,this,
+                                                                                                                   std::placeholders::_1),sub_odom_options);
+    // route_deviation
+    // 경로 이탈
+    rclcpp::CallbackGroup::SharedPtr cb_group_route_deviation;
+    cb_group_route_deviation = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions sub_route_deviation_options;
+    sub_route_deviation_options.callback_group = cb_group_route_deviation;
+    sub_route_deviation_ = this->create_subscription<routedevation_msgs::msg::Status>(constants_->tp_name_route_deviation_,
+                                                                                      default_qos,
+                                                                                      std::bind(&Center::route_deviation_callback,
+                                                                                                this,
+                                                                                                std::placeholders::_1),
+                                                                                      sub_route_deviation_options);
+
+    // 장애물 정보
+    // obstacle_status
+    rclcpp::CallbackGroup::SharedPtr cb_group_obstacle_status;
+    cb_group_obstacle_status = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions sub_obstacle_status_options;
+    sub_obstacle_status_options.callback_group = cb_group_obstacle_status;
+    sub_obstacle_status_ = this->create_subscription<obstacle_msgs::msg::Status>(constants_->tp_name_obstacle_status_,
+                                                                                        default_qos,
+                                                                                        std::bind(&Center::obstacle_status_callback,
+                                                                                                  this,
+                                                                                                  std::placeholders::_1),
+                                                                                        sub_obstacle_status_options);
+
+    //==
+    // publisher
+    //==
     // cmd_vel (이동 정보)
     rclcpp::CallbackGroup::SharedPtr cb_group_cmd;
     cb_group_cmd = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -58,16 +98,16 @@ void Center::ros_init() {
     pub_cmd_options.callback_group = cb_group_cmd;
     pub_cmd_ = this->create_publisher<geometry_msgs::msg::Twist>(constants_->tp_name_cmd_, default_qos,
                                                                  pub_cmd_options);
+    // 브레이크 작동
+    // 필요시 callback group 이용할 것.
+    // 테스트하여 브레이크 되는지 보고 사용할 것.
+    pub_break_ = this->create_publisher<route_msgs::msg::DriveBreak>(constants_->tp_name_drive_break_,default_qos);
 
-    // 장애물 정보 callback
-    // 경로 이탈 정보 callback
+
     // 로봇 모드 timer
     //   ㄴ speaker timer
 }
 
-void Center::fn_run() {
-
-}
 
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
@@ -83,9 +123,8 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
 
     // 노트 타입에 따라 입력
     car_->set_node_kind(car_mode_determine(cur_node_->kind));
-
     // 연결 노드 일때 45도 이상 전환하지 못하도록
-    if (car_->get_node_kind() == kec_car::NodeKind::kConnecting) {
+    if (straight_judgment(car_->get_node_kind())) {
         // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
         return std::abs(car_->get_degree() - cur_node_->heading) > 45 ? rclcpp_action::GoalResponse::REJECT
                                                                       : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
@@ -111,7 +150,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     auto feedback = std::make_shared<RouteToPose::Feedback>();
     auto result = std::make_shared<RouteToPose::Result>();
 
-    if (car_->get_node_kind() == kec_car::NodeKind::kConnecting) {
+    if (straight_judgment(car_->get_node_kind())) {
         while (rclcpp::ok()) {
             if (goal_handle->is_canceling()) {
                 result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
@@ -145,10 +184,10 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
             pub_cmd_->publish(cmd_vel);
             // if 도착 명령 확인
             // else
-            feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kWorking);
+            feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kStart);
             goal_handle->publish_feedback(feedback);
             RCLCPP_INFO(this->get_logger(), "Publish feedback");
-        }
+        } // while
         if (rclcpp::ok()) {
             result->result=static_cast<int>(kec_driving_code::Result::kSuccess);
             goal_handle->succeed(result);
@@ -202,6 +241,7 @@ kec_car::NodeKind Center::car_mode_determine(std::string car_node) {
     static const std::unordered_map<std::string, kec_car::NodeKind> node_kind_map = {
             {"intersection", kec_car::NodeKind::kIntersection},
             {"connecting",   kec_car::NodeKind::kConnecting},
+            {"complete",kec_car::NodeKind::kComplete},
             {"endpoint",     kec_car::NodeKind::kEndpoint},
             {"waiting",      kec_car::NodeKind::kWaiting}
     };
@@ -243,4 +283,22 @@ geometry_msgs::msg::Twist Center::calculate_straight_movement(float acceleration
         result.angular.set__z(SETTING_ZERO);
     }
     return result;
+}
+
+void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
+
+}
+
+void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
+
+}
+
+void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
+    status->obstacle_value
+}
+
+bool Center::straight_judgment(kec_car::NodeKind kind) {
+    return (kind == kec_car::NodeKind::kConnecting ||
+            kind == kec_car::NodeKind::kEndpoint ||
+            kind == kec_car::NodeKind::kComplete)?true:false;
 }

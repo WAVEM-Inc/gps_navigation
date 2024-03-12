@@ -56,6 +56,7 @@ double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
     const double c = 2* std::atan2(std::sqrt(a),sqrt(1-a));
     std::cout << "[RouteTracker] Distance , haversine_calculate_distance LINE : "<<__LINE__<<" "<<
     first.fn_get_latitude()<<" " << first.fn_get_longitude() <<","<< second.fn_get_latitude()<<" "<<second.fn_get_longitude()<<" distance : "<<earth_radius * c<<std::endl;
+    //km/h -> m/sec 변환 필요
     return earth_radius * c;
 }
 
@@ -65,7 +66,6 @@ double Distance::degree_to_radian(const double degree) {
 
 //double Distance::distance_from_perpendicular_line(double x1, double y1, double x2, double y2, double x0, double y0) {
 double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place) {
-
         double distance=0.0;
         //   if (y2 - y1) == 0:
         if (end_node.fn_get_longitude() - start_node.fn_get_longitude() == 0) {
@@ -92,3 +92,11 @@ double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData en
     }
 
 Distance::Distance() {}
+
+//제동거리=  ((V^2-V_0^2))/(2a제동효율)
+// braking_distance = (0*0-velocity*velocity)/2*deceleration*friction_coefficient
+double Distance::calculate_braking_distance(const double velocity,
+                                            const double friction_coefficient,
+                                            const double deceleration) {
+    return static_cast<double>((0*0-velocity*velocity)/2*deceleration*friction_coefficient);
+}

@@ -13,6 +13,9 @@ find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(routedevation_msgs REQUIRED)
+find_package(obstacle_msgs REQUIRED)
 
 include_directories(
         include
@@ -31,6 +34,9 @@ set(dependencies
         sensor_msgs
         tf2
         geometry_msgs
+        nav_msgs
+        routedevation_msgs
+        obstacle_msgs
 )
 
 set(source_list

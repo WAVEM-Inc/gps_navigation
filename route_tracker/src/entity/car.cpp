@@ -28,6 +28,18 @@ void Car::set_location(const GpsData location) {
     location_ = location;
 }
 
-Car::Car() {
+Car::Car() : friction_coefficient_(FRICTION_COEFFICIENT),deceleration_(DECELERATION) {
 
+}
+double Car::get_friction_coefficient() const {
+    return friction_coefficient_;
+}
+void Car::set_friction_coefficient(double friction_coefficient) {
+    friction_coefficient_ = friction_coefficient;
+}
+double Car::get_deceleration() const {
+    return deceleration_;
+}
+void Car::set_deceleration(double deceleration) {
+    deceleration_ = deceleration;
 }
