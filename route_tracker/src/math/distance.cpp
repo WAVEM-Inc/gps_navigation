@@ -37,9 +37,9 @@
     );
     std::shared_ptr<GpsData> gps_b = std::make_shared<GpsData>(35.0852,128.8786
     );
-    distance.haversine_calculate_distance(*gps_a,*gps_b);
+    distance.distance_haversine_calculate(*gps_a,*gps_b);
 */
-double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
+double Distance::distance_haversine_calculate(GpsData first, GpsData second) {
     const double earth_radius = 6371.0;
     const double d_lat = degree_to_radian(second.fn_get_latitude() - first.fn_get_latitude());
     const double d_lon = degree_to_radian(second.fn_get_longitude() - first.fn_get_longitude());
@@ -54,7 +54,7 @@ double Distance::haversine_calculate_distance(GpsData first,GpsData second) {
 
     std::cout <<std::sqrt(a)<< " "<<sqrt(1-a)<<" "<<std::atan2(std::sqrt(a),sqrt(1-a));
     const double c = 2* std::atan2(std::sqrt(a),sqrt(1-a));
-    std::cout << "[RouteTracker] Distance , haversine_calculate_distance LINE : "<<__LINE__<<" "<<
+    std::cout << "[RouteTracker] Distance , distance_haversine_calculate LINE : "<<__LINE__<<" "<<
     first.fn_get_latitude()<<" " << first.fn_get_longitude() <<","<< second.fn_get_latitude()<<" "<<second.fn_get_longitude()<<" distance : "<<earth_radius * c<<std::endl;
     //km/h -> m/sec 변환 필요
     return earth_radius * c;
@@ -71,13 +71,13 @@ double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData en
         if (end_node.fn_get_longitude() - start_node.fn_get_longitude() == 0) {
             //distance = distanceBetween(x2, y0, x0, y0)
             std::unique_ptr<GpsData> temp_first= std::make_unique<GpsData>(end_node.fn_get_latitude(),cur_place.fn_get_longitude());
-            distance = haversine_calculate_distance(std::move(*temp_first),cur_place);
+            distance = distance_haversine_calculate(std::move(*temp_first), cur_place);
         }
         //elif (x2 - x1) == 0:
         else if (end_node.fn_get_latitude() - start_node.fn_get_latitude() == 0) {
             std::unique_ptr<GpsData> temp_first= std::make_unique<GpsData>(cur_place.fn_get_latitude(),end_node.fn_get_longitude());
             //distance = distanceBetween(x0, y2, x0, y0)
-            distance = haversine_calculate_distance(std::move(*temp_first), cur_place);
+            distance = distance_haversine_calculate(std::move(*temp_first), cur_place);
         } else {
             // 시작 점을 지나는 직선의 기울기는
             double perpendicular_m = (end_node.fn_get_latitude() - start_node.fn_get_latitude()) / (end_node.fn_get_longitude() - start_node.fn_get_longitude()) * -1;
@@ -95,8 +95,29 @@ Distance::Distance() {}
 
 //제동거리=  ((V^2-V_0^2))/(2a제동효율)
 // braking_distance = (0*0-velocity*velocity)/2*deceleration*friction_coefficient
-double Distance::calculate_braking_distance(const double velocity,
+double Distance::distance_braking_calculate(const double velocity,
                                             const double friction_coefficient,
                                             const double deceleration) {
     return static_cast<double>((0*0-velocity*velocity)/2*deceleration*friction_coefficient);
+}
+/**
+ * @brief distance calculation by Korea TM
+ * @param first
+ * @param second
+ * @return
+ */
+double Distance::distance_gps_to_ktm(GpsData first, GpsData second) {
+    return 0;
+}
+
+
+GpsData Distance::convert_gps_to_ktm(const GpsData original) {
+    GpsData tmep_gps;
+    GpsData out_gps;
+    // degree to radian
+    tmep_gps.fn_set_latitude(degree_to_radian(original.fn_get_latitude()));
+    tmep_gps.fn_set_longitude(degree_to_radian(original.fn_get_longitude()));
+
+
+    return GpsData();
 }

@@ -294,7 +294,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
 }
 
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
-    status->obstacle_value
+    //status->obstacle_value
 }
 
 bool Center::straight_judgment(kec_car::NodeKind kind) {
