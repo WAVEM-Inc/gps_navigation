@@ -115,7 +115,6 @@ double Distance::distance_gps_to_ktm(GpsData first, GpsData second) {
 
 
 void Distance::convert_gps_to_ktm(GpsData& original) {
-
     GeoPoint in_pt;
     in_pt.x = original.fn_get_latitude();
     in_pt.y= original.fn_get_longitude();

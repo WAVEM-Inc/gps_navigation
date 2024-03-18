@@ -5,12 +5,17 @@
 #include "task.hpp"
 
 
-Task::Task(Task::Node cur_node, Task::Node next_node) {
+TaskGoal::TaskGoal(TaskGoal::Node cur_node, TaskGoal::Node next_node) {
     cur_node_= cur_node;
     next_node_= next_node;
 }
 
-kec_car::NodeKind Task::get_cur_node_kind() const {
+kec_car::NodeKind TaskGoal::get_cur_node_kind() const {
     return trans_.string_to_node_kind(cur_node_.kind);
 }
+
+kec_car::NodeKind TaskGoal::get_next_node_kind() const {
+    return trans_.string_to_node_kind(next_node_.kind);
+}
+
 

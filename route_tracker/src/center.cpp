@@ -126,7 +126,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
     DataTypeTrans data_type_trans;
 
 
-    task_ = std::make_unique<Task>(goal->start_node,goal->end_node);
+    task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
     // 1-1), 2-1) 목적지 정보 수신
     cur_node_ = std::make_shared<route_msgs::msg::Node>(goal->start_node);
     next_node_= std::make_shared<route_msgs::msg::Node>(goal->end_node);

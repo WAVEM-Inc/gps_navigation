@@ -10,6 +10,7 @@
 #include "gps_data.hpp"
 #define FRICTION_COEFFICIENT 0.8
 #define DECELERATION 9.8
+
 class Car {
 private:
     kec_car::NodeKind cur_node_kind_;

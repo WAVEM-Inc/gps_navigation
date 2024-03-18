@@ -72,7 +72,7 @@ private :
     std::unique_ptr<ImuConvert> imu_converter_;
     // field data
     std::unique_ptr<Car> car_;
-    std::unique_ptr<Task> task_;
+    std::unique_ptr<TaskGoal> task_;
 
     //function
     void ros_parameter_setting();
