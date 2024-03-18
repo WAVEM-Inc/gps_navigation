@@ -12,17 +12,19 @@
 #define DECELERATION 9.8
 class Car {
 private:
-    kec_car::NodeKind node_kind_;
+    kec_car::NodeKind cur_node_kind_;
+    kec_car::DrivingMode drive_mode_;
+    //
     double degree_;
+
     GpsData location_;
+    // 마찰 계수
     double friction_coefficient_;
     double deceleration_;
 
 public :
     Car();
 
-    kec_car::NodeKind get_node_kind() const;
-    void set_node_kind(kec_car::NodeKind node_kind);
     double get_degree() const;
     void set_degree(double degree);
     const GpsData get_location() const;
@@ -32,6 +34,9 @@ public :
     void set_friction_coefficient(double friction_coefficient);
     double get_deceleration() const;
     void set_deceleration(double deceleration);
+    kec_car::DrivingMode get_drive_mode() const;
+    void set_drive_mode(kec_car::DrivingMode drive_mode);
+
 };
 
 

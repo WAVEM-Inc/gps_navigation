@@ -21,10 +21,11 @@
 #include "obstacle_msgs/msg/status.hpp"
 
 //
-#include "entity/constants.hpp"
-#include "entity/ros_parameter.hpp"
+#include "common/constants.hpp"
+#include "common/ros_parameter.hpp"
 #include "math/imu_convert.hpp"
 #include "entity/car.hpp"
+#include "task.hpp"
 
 /**
  * @brief
@@ -56,6 +57,10 @@ private :
     //field publish
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_;
     rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break_;
+    rclcpp::Publisher<route_msgs::msg::DriveState>::SharedPtr pub_drive_state_;
+    //field timer
+    rclcpp::TimerBase::SharedPtr timer_drive_state_;
+
     //
     std::unique_ptr<Constants> constants_;
     /// field action
@@ -67,6 +72,7 @@ private :
     std::unique_ptr<ImuConvert> imu_converter_;
     // field data
     std::unique_ptr<Car> car_;
+    std::unique_ptr<Task> task_;
 
     //function
     void ros_parameter_setting();
@@ -88,9 +94,11 @@ private :
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom);
     void route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status);
     void obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status);
+    //
+    void drive_info_timer();
+    //
     kec_car::NodeKind car_mode_determine(std::string car_node);
     geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
-    bool straight_judgment(kec_car::NodeKind kind);
 };
 
 

@@ -29,7 +29,7 @@ include_directories(
         include/entity
         include/route_tracker
         include/math
-
+        include/common
         #${EXTERNAL_INCLUDE_DIRS}
 )
 
@@ -55,16 +55,20 @@ set(source_list
         src/entity/gps_data.cpp
         src/center.cpp
         include/route_tracker/center.hpp
-        include/entity/constants.hpp
+        include/common/constants.hpp
         src/math/imu_convert.cpp
         include/math/imu_convert.hpp
-        include/entity/ros_parameter.hpp
+        include/common/ros_parameter.hpp
         include/code/kec_car_data.hpp
         include/code/kec_car_data.hpp
         include/code/kec_car_data.hpp
         src/entity/car.cpp
         include/entity/car.hpp
         include/code/kec_driving_data_code.hpp
+        include/math/geo_trans.hpp
+        include/common/data_type_trans.hpp
+        src/entity/task.cpp
+        include/entity/task.hpp
 )
 
 set(node_name

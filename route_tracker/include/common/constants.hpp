@@ -13,6 +13,7 @@
 #define TP_NAME_ROUTE_DEVIATION "/drive/route_deviation/status"
 #define TP_NAME_OBSTACLE_STATUS "/drive/obstacle/status"
 #define TP_NAME_DRIVE_BREAK "/drive/break"
+#define TP_NAME_DRIVE_INFO "/drive/info"
 
 #include<iostream>
 class Constants {
@@ -25,7 +26,8 @@ public:
         tp_name_odom_(TP_NAME_ODOM),
         tp_name_route_deviation_(TP_NAME_ROUTE_DEVIATION),
         tp_name_obstacle_status_(TP_NAME_OBSTACLE_STATUS),
-        tp_name_drive_break_(TP_NAME_DRIVE_BREAK)
+        tp_name_drive_break_(TP_NAME_DRIVE_BREAK),
+        tp_name_drive_info_(TP_NAME_DRIVE_INFO)
         {}
 
 public :
@@ -37,6 +39,7 @@ public :
     const std::string tp_name_route_deviation_;
     const std::string tp_name_obstacle_status_;
     const std::string tp_name_drive_break_;
+    const std::string tp_name_drive_info_;
 };
 
 

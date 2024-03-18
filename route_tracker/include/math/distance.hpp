@@ -8,6 +8,8 @@
 
 #include "entity/gps_data.hpp"
 #include "proj.h"
+#include "geo_trans.hpp"
+
 class Distance {
 public :
     Distance();
@@ -17,8 +19,9 @@ public :
     double distance_gps_to_ktm(GpsData first, GpsData second);
 
 private :
+    GeoTrans geo_trans_;
     double degree_to_radian(const double degree);
-    GpsData convert_gps_to_ktm(const GpsData);
+    void convert_gps_to_ktm(GpsData& original);
 };
 
 #endif //ROUTE_TRACKER_DISTANCE_HPP

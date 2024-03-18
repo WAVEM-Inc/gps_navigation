@@ -107,17 +107,20 @@ double Distance::distance_braking_calculate(const double velocity,
  * @return
  */
 double Distance::distance_gps_to_ktm(GpsData first, GpsData second) {
+    //convert_gps_to_ktm(first);
+    //convert_gps_to_ktm(second);
+
     return 0;
 }
 
 
-GpsData Distance::convert_gps_to_ktm(const GpsData original) {
-    GpsData tmep_gps;
-    GpsData out_gps;
-    // degree to radian
-    tmep_gps.fn_set_latitude(degree_to_radian(original.fn_get_latitude()));
-    tmep_gps.fn_set_longitude(degree_to_radian(original.fn_get_longitude()));
+void Distance::convert_gps_to_ktm(GpsData& original) {
 
-
-    return GpsData();
+    GeoPoint in_pt;
+    in_pt.x = original.fn_get_latitude();
+    in_pt.y= original.fn_get_longitude();
+    in_pt=geo_trans_.convert(geo_trans_.TM,geo_trans_.GEO,in_pt);
+    original.fn_set_latitude(in_pt.x);
+    original.fn_set_longitude(in_pt.y);
+    //return GpsData();
 }

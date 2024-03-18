@@ -5,6 +5,7 @@
 #include "route_tracker/center.hpp"
 #include "code/kec_driving_data_code.hpp"
 #include "distance.hpp"
+#include "common/data_type_trans.hpp"
 
 #define FIRST_ZONE 0.3
 #define SECOND_ZONE 0.6
@@ -14,6 +15,7 @@ Center::Center() : Node("route_tracker_node") {
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
+
     ros_parameter_setting();
     ros_init();
 }
@@ -23,8 +25,7 @@ Center::Center() : Node("route_tracker_node") {
 void Center::ros_init() {
     auto default_qos = rclcpp::QoS(rclcpp::SystemDefaultsQoS());
     // action_server
-    rclcpp::CallbackGroup::SharedPtr callback_group_action_server;
-    callback_group_action_server = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::CallbackGroup::SharedPtr callback_group_action_server = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     route_to_pose_action_server_ = rclcpp_action::create_server<RouteToPose>(
             this,
             constants_->tp_name_route_to_pose_,
@@ -101,30 +102,38 @@ void Center::ros_init() {
     // 브레이크 작동
     // 필요시 callback group 이용할 것.
     // 테스트하여 브레이크 되는지 보고 사용할 것.
-    pub_break_ = this->create_publisher<route_msgs::msg::DriveBreak>(constants_->tp_name_drive_break_,default_qos);
+    pub_break_ = this->create_publisher<route_msgs::msg::DriveBreak>(constants_->tp_name_drive_break_,
+                                                                     default_qos);
 
-
+    // drive state - 스피커, 주행 모드
+    pub_drive_state_ = this->create_publisher<route_msgs::msg::DriveState>(
+            constants_->tp_name_drive_info_,
+            default_qos);
     // 로봇 모드 timer
     //   ㄴ speaker timer
+    // 0.1 sec = 100ms
+    rclcpp::CallbackGroup::SharedPtr drive_info_callback_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    timer_drive_state_ = this->create_wall_timer(std::chrono::seconds(1),
+                                                 std::bind(&Center::drive_info_timer,
+                                                           this),
+                                                 drive_info_callback_group);
 }
 
 
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
-    // reset
-    if (cur_node_.use_count() > 0) {
-        cur_node_.reset();
-    }
-    if(next_node_.use_count()>0){
-        next_node_.reset();
-    }
+
+    DataTypeTrans data_type_trans;
+
+
+    task_ = std::make_unique<Task>(goal->start_node,goal->end_node);
+    // 1-1), 2-1) 목적지 정보 수신
     cur_node_ = std::make_shared<route_msgs::msg::Node>(goal->start_node);
     next_node_= std::make_shared<route_msgs::msg::Node>(goal->end_node);
 
-    // 노트 타입에 따라 입력
-    car_->set_node_kind(car_mode_determine(cur_node_->kind));
+    //car_->set_cur_node_kind(car_mode_determine(cur_node_->kind));
     // 연결 노드 일때 45도 이상 전환하지 못하도록
-    if (straight_judgment(car_->get_node_kind())) {
+    if (data_type_trans.straight_judgment(task_->get_cur_node_kind())) {
         // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
         return std::abs(car_->get_degree() - cur_node_->heading) > 45 ? rclcpp_action::GoalResponse::REJECT
                                                                       : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
@@ -149,8 +158,11 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     const auto goal = goal_handle->get_goal();
     auto feedback = std::make_shared<RouteToPose::Feedback>();
     auto result = std::make_shared<RouteToPose::Result>();
+    DataTypeTrans data_type_trans;
 
-    if (straight_judgment(car_->get_node_kind())) {
+    // node kind 판단
+    //1-2) 진진 필요
+    if (data_type_trans.straight_judgment(task_->get_cur_node_kind())) {
         while (rclcpp::ok()) {
             if (goal_handle->is_canceling()) {
                 result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
@@ -159,6 +171,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                 return;
             }
             if(car_->get_location().fn_get_longitude()==0 && car_->get_location().fn_get_latitude()==0){
+
                 feedback->status_code=static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
                 goal_handle->publish_feedback(feedback);
                 RCLCPP_INFO(this->get_logger(), "Publish feedback");
@@ -193,6 +206,13 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
             goal_handle->succeed(result);
             RCLCPP_INFO(this->get_logger(), "Goal succeeded");
         }
+    }
+    //2-2) 대기 판단 -> 교차로
+    else if(task_->get_cur_node_kind() == kec_car::NodeKind::kWaiting){
+
+    }
+    else if(task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection){
+
     }
 }
 
@@ -237,22 +257,6 @@ void Center::ros_parameter_setting() {
                                                     goal_distance);
 }
 
-kec_car::NodeKind Center::car_mode_determine(std::string car_node) {
-    static const std::unordered_map<std::string, kec_car::NodeKind> node_kind_map = {
-            {"intersection", kec_car::NodeKind::kIntersection},
-            {"connecting",   kec_car::NodeKind::kConnecting},
-            {"complete",kec_car::NodeKind::kComplete},
-            {"endpoint",     kec_car::NodeKind::kEndpoint},
-            {"waiting",      kec_car::NodeKind::kWaiting}
-    };
-    auto it = node_kind_map.find(car_node);
-    if (it != node_kind_map.end()) {
-        return it->second;
-    } else {
-        // 기본값으로 대기 노드 설정
-        return kec_car::NodeKind::kWaiting;
-    }
-}
 
 geometry_msgs::msg::Twist Center::calculate_straight_movement(float acceleration) {
     geometry_msgs::msg::Twist result;
@@ -297,8 +301,10 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
     //status->obstacle_value
 }
 
-bool Center::straight_judgment(kec_car::NodeKind kind) {
-    return (kind == kec_car::NodeKind::kConnecting ||
-            kind == kec_car::NodeKind::kEndpoint ||
-            kind == kec_car::NodeKind::kComplete)?true:false;
+void Center::drive_info_timer() {
+    DataTypeTrans data_type_trans;
+    route_msgs::msg::DriveState drive_state;
+    drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
+    drive_state.speaker;
+    pub_drive_state_->publish(drive_state);
 }
