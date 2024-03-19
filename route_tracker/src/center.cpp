@@ -10,6 +10,7 @@
 #define FIRST_ZONE 0.3
 #define SECOND_ZONE 0.6
 #define SETTING_ZERO 0.0
+#define MAX_DIRECTION 45
 
 Center::Center() : Node("route_tracker_node") {
     constants_ = std::make_unique<Constants>();
@@ -119,25 +120,33 @@ void Center::ros_init() {
                                                  drive_info_callback_group);
 }
 
-
+/**
+ * @brief Route_to_pose goal reception function
+ * @date 24-03-19
+ * @param uuid
+ * @param goal
+ * @return rclcpp_action::GoalResponse
+ */
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
-
     DataTypeTrans data_type_trans;
-
-
     task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
+
     // 1-1), 2-1) 목적지 정보 수신
     cur_node_ = std::make_shared<route_msgs::msg::Node>(goal->start_node);
     next_node_= std::make_shared<route_msgs::msg::Node>(goal->end_node);
 
-    //car_->set_cur_node_kind(car_mode_determine(cur_node_->kind));
-    // 연결 노드 일때 45도 이상 전환하지 못하도록
-    if (data_type_trans.straight_judgment(task_->get_cur_node_kind())) {
-        // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
-        return std::abs(car_->get_degree() - cur_node_->heading) > 45 ? rclcpp_action::GoalResponse::REJECT
-                                                                      : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    }
+    // * [Exception Handling] 연결 노드 일때 45도 이상 전환하지 못하도록
+    try{
+            if (data_type_trans.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
+                    // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
+                    return std::abs(car_->get_degree() - cur_node_->heading) > MAX_DIRECTION ? rclcpp_action::GoalResponse::REJECT
+                                                                                  : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+            }
+    } //try
+    catch(std::out_of_range& error){
+            return rclcpp_action::GoalResponse::REJECT;
+    } // catch
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
@@ -162,7 +171,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 
     // node kind 판단
     //1-2) 진진 필요
-    if (data_type_trans.straight_judgment(task_->get_cur_node_kind())) {
+    if (data_type_trans.straight_judgment(task_->get_cur_node_kind(),task_->get_next_node_kind())) {
         while (rclcpp::ok()) {
             if (goal_handle->is_canceling()) {
                 result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);

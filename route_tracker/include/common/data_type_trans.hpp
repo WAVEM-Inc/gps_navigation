@@ -9,8 +9,6 @@
 #include "code/kec_car_data.hpp"
 #include "entity/task.hpp"
 
-class TaskGoal;
-
 class DataTypeTrans {
 public:
     DataTypeTrans() {}
@@ -32,10 +30,6 @@ public:
             }//switch
     }//drive_mode_to_string
 
-    kec_car::NodeKind string_to_node_kind(const std::string data) const {
-
-    }
-
     /**
      *
      * @param kind
@@ -52,9 +46,9 @@ public:
        //
    }
    */
-    bool straight_judgment(std::string start_node_kind, std::string end_node_kind) {
-            kec_car::NodeKind start_kind = car_mode_determine(start_node_kind);
-            kec_car::NodeKind end_kind = car_mode_determine(end_node_kind);
+    bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
+                /*kec_car::NodeKind start_kind = car_mode_determine(start_node_kind);
+            kec_car::NodeKind end_kind = car_mode_determine(end_node_kind);*/
             // 연결-연결, 연결-완료, 연결-주행 종료, 연결-일시 정지, 교차로-연결, 교차로-완료, 교차로-주행 종료, 교차로-일시 정지,
             // 완료-연결, 완료-완료, 완료-주행 종료, 완료-일시 정지, 종점-연결 조건을 확인하여 직진 여부 판단
             if ((start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kConnecting) ||
