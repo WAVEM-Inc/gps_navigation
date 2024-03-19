@@ -30,25 +30,9 @@ public:
             }//switch
     }//drive_mode_to_string
 
-    /**
-     *
-     * @param kind
-     * @return
-     */
-    /**
-   bool straight_judgment(kec_car::NodeKind kind){
-       //
-
-       //
-       return (kind == kec_car::NodeKind::kConnecting ||
-               kind == kec_car::NodeKind::kEndpoint ||
-               kind == kec_car::NodeKind::kComplete)?true:false;
-       //
-   }
-   */
     bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
-                /*kec_car::NodeKind start_kind = car_mode_determine(start_node_kind);
-            kec_car::NodeKind end_kind = car_mode_determine(end_node_kind);*/
+            /*kec_car::NodeKind start_kind = car_mode_determine(start_node_kind);
+        kec_car::NodeKind end_kind = car_mode_determine(end_node_kind);*/
             // 연결-연결, 연결-완료, 연결-주행 종료, 연결-일시 정지, 교차로-연결, 교차로-완료, 교차로-주행 종료, 교차로-일시 정지,
             // 완료-연결, 완료-완료, 완료-주행 종료, 완료-일시 정지, 종점-연결 조건을 확인하여 직진 여부 판단
             if ((start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kConnecting) ||
@@ -64,6 +48,15 @@ public:
                 (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kEndpoint) ||
                 (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kWaiting) ||
                 (start_kind == kec_car::NodeKind::kEndpoint && end_kind == kec_car::NodeKind::kConnecting)) {
+                    return true;
+            } else {
+                    return false;
+            }
+    }
+
+    bool intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
+            if ((start_kind==kec_car::NodeKind::kIntersection && end_kind==kec_car::NodeKind::kIntersection)||
+                    (start_kind==kec_car::NodeKind::kWaiting && end_kind==kec_car::NodeKind::kIntersection)){
                     return true;
             } else {
                     return false;

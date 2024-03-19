@@ -67,6 +67,9 @@ double Distance::degree_to_radian(const double degree) {
 //double Distance::distance_from_perpendicular_line(double x1, double y1, double x2, double y2, double x0, double y0) {
 double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place) {
         double distance=0.0;
+        convert_gps_to_ktm(start_node);
+        convert_gps_to_ktm(end_node);
+        convert_gps_to_ktm(cur_place);
         //   if (y2 - y1) == 0:
         if (end_node.fn_get_longitude() - start_node.fn_get_longitude() == 0) {
             //distance = distanceBetween(x2, y0, x0, y0)

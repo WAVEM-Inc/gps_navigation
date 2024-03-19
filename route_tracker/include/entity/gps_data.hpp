@@ -11,6 +11,7 @@ private :
 public:
     GpsData();
     GpsData(const double latitude, const double longitude);
+
     void fn_set_longitude(double longitude);
     void fn_set_latitude(double latitude);
     double fn_get_latitude() const;

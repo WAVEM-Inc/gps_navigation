@@ -63,9 +63,6 @@ private :
 
     //
     std::unique_ptr<Constants> constants_;
-    /// field action
-    std::shared_ptr<route_msgs::msg::Node> cur_node_;
-    std::shared_ptr<route_msgs::msg::Node> next_node_;
     // field entity
     std::unique_ptr<RosParameter> ros_parameter_;
     // field math
@@ -73,6 +70,10 @@ private :
     // field data
     std::unique_ptr<Car> car_;
     std::unique_ptr<TaskGoal> task_;
+    //
+    std::mutex mutex_;
+
+    std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
 
     //function
     void ros_parameter_setting();
@@ -97,7 +98,6 @@ private :
     //
     void drive_info_timer();
     //
-    kec_car::NodeKind car_mode_determine(std::string car_node);
     geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
 };
 

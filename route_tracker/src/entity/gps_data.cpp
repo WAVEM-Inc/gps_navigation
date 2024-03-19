@@ -29,3 +29,4 @@ GpsData::GpsData() {
     this->latitude_=0;
     this->longitude_=0;
 }
+
