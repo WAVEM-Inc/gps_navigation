@@ -74,6 +74,7 @@ private :
     std::mutex mutex_;
 
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
+    std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;
 
     //function
     void ros_parameter_setting();
@@ -99,6 +100,8 @@ private :
     void drive_info_timer();
     //
     geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
+    void start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
+
 };
 
 

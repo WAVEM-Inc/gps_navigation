@@ -210,29 +210,57 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                 if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
                         // 목적지 도착 여부
                         // distance_from_perpendicular_line();
-                        GpsData start_node_position = task_->get_cur_gps();
-                        GpsData end_node_position = task_->get_next_gps();
                         GpsData cur_location(car_->get_location().fn_get_latitude(),
                                              car_->get_location().fn_get_longitude());
                         // 도착지 거리
+                        // 6-1-1) 목적지 도착 여부
                         // 파라미터 작업
-                        if (center_distance->distance_from_perpendicular_line(start_node_position, end_node_position,
+                        if (center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
+                                                                              task_->get_next_gps(),
                                                                               cur_location) <=
                             ros_parameter_->goal_distance_) {
                                 break;
                         }
-                        // 이벤트 판단
+                        // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
+                        // 6-1-3) 이탈 되었는가?
+                        mutex_.lock();
+                        routedevation_msgs::msg::Status temp_devation_status = *devation_status_;
+                        mutex_.unlock();
+                        // 6-1-3-Y)
+                        if (temp_devation_status.offcource_status) {
+                                car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
+                                // 자동차 자세 - 출발지 노드 헤딩 정보 >45 실패
+                                // 자동차 자세 -> 목적지 노드 헤딩 정보로 사용할지?
+                                if(abs(car_->get_degree()-task_->get_cur_heading())>45){
+                                        if (rclcpp::ok()) {
+                                                result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
+                                                goal_handle->abort(result);
+                                                RCLCPP_INFO(this->get_logger(), "Goal Failed");
+                                                return;
+                                        }
+                                }
+                                else{
+                                        //
+                                        GpsData gps_data(devation_status_->offcource_goal_lat,devation_status_->offcource_goal_lon);
+                                        // 복귀 목적지 도착 여부
+                                        내일 진행!
+                                        center_distance->distance_from_perpendicular_line(car_->get_location(),gps_data,car_->get_location());
 
-                        //
-                        // 직진 주행 명령
-                        geometry_msgs::msg::Twist cmd_vel = calculate_straight_movement(ros_parameter_->max_speed_);
-                        pub_cmd_->publish(cmd_vel);
-                        // if 도착 명령 확인
-                        // else
-                        feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kStart);
-                        goal_handle->publish_feedback(feedback);
-                        RCLCPP_INFO(this->get_logger(), "Publish feedback");
-                }
+                                        // 방향 맞추기
+                                        // 직진
+
+                                        car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                                }
+                        }
+                        // 6-1-3-N)
+                        else{
+                                //직진 주행 추가
+                                geometry_msgs::msg::Twist cmd_vel = calculate_straight_movement(ros_parameter_->max_speed_);
+                                pub_cmd_->publish(cmd_vel);
+                                //feedback publish
+                                start_on(feedback,goal_handle);
+                        }
+                } // 직진 주행
                 //6-2) 회전 주행
                 else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
                                                                  task_->get_next_node_kind())) {
@@ -243,6 +271,11 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                         } else {
                                 double goal_distance = center_distance->distance_from_perpendicular_line(
                                         task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+                                // 회전 주행 알림.
+                                car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+                                //feedback publish
+                                start_on(feedback,goal_handle);
+
                                 // 2-6) 직진 목적지에 도착했는가?
                                 // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
                                 // 최초에는 목적지 도착하여 if문, 이후에는 check를 통해 진입
@@ -270,6 +303,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                                         }
                                         else{
                                                 // 2-9) 종료
+                                                car_->set_drive_mode(kec_car::DrivingMode::kStop);
                                                 break;
                                         }
 
@@ -383,7 +417,12 @@ void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
 }
 
 void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
-
+        // 복구모드 시 갱신 필요 없음.
+        // 복구 중 또 들어오는 경우를 방지하기 위함.
+        if(car_->get_drive_mode()==kec_car::DrivingMode::kRecovery){
+                return;
+        }
+        devation_status_= status;
 }
 
 /**
@@ -401,4 +440,10 @@ void Center::drive_info_timer() {
         drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
         drive_state.speaker;
         pub_drive_state_->publish(drive_state);
+}
+
+void Center::start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr <RouteToPoseGoalHandler> goal_handle) {
+        feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kStart);
+        goal_handle->publish_feedback(feedback);
+        RCLCPP_INFO(this->get_logger(), "Publish feedback");
 }
