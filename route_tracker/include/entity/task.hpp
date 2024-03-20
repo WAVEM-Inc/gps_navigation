@@ -16,8 +16,10 @@ private :
     using Node = route_msgs::msg::Node;
     Node cur_node_;
     Node next_node_;
+
     DataTypeTrans trans_;
 public :
+    bool rotation_straight_check_;
     TaskGoal(Node cur_node, Node next_node);
     kec_car::NodeKind get_cur_node_kind() ;
     kec_car::NodeKind get_next_node_kind();
@@ -25,6 +27,7 @@ public :
     GpsData get_next_gps();
 
     double get_cur_heading();
+    double get_next_heading();
 };
 
 

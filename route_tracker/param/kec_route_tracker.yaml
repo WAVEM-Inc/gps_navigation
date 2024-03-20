@@ -7,3 +7,5 @@ route_tracker_node:
     driving_calibration_angle_increase: 0.1
     goal_distance: 3.0
     rotation_straight_dist: 5.0
+    rotation_angle_increase: 0.1
+    rotation_angle_tolerance: 5.0

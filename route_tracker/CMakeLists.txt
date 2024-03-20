@@ -69,6 +69,8 @@ set(source_list
         include/common/data_type_trans.hpp
         src/entity/task.cpp
         include/entity/task.hpp
+        src/math/car_behavior.cpp
+        include/math/car_behavior.hpp
 )
 
 set(node_name

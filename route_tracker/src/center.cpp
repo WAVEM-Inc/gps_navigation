@@ -6,6 +6,7 @@
 #include "code/kec_driving_data_code.hpp"
 #include "distance.hpp"
 #include "common/data_type_trans.hpp"
+#include "car_behavior.hpp"
 
 #define FIRST_ZONE 0.3
 #define SECOND_ZONE 0.6
@@ -137,22 +138,29 @@ void Center::ros_init() {
  */
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
-        DataTypeTrans data_type_trans;
-        // 1-1), 2-1) 목적지 정보 수신
+        // 1) goal 수신
+        // 2) route_to_pose_goal_handle 호출
         task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
 
         // * [Exception Handling] 연결 노드 일때 45도 이상 전환하지 못하도록
         try {
-                if (data_type_trans.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
+                CarBehavior car_behavior;
+                //4) 직진 명령인가?
+                if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
                         // abs(출발지 노드 진출 방향-기존 노드 진출 방향) >45
+                        // 4-Y) 각도가 예외 상황인가?
+                        // 4-Y-Y) REJECT
+                        // 4-Y-N) route_to_pose_accepted_handle
                         return std::abs(car_->get_degree() - task_->get_cur_heading()) > MAX_DIRECTION
                                ? rclcpp_action::GoalResponse::REJECT
                                : rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
                 }
         } //try
         catch (std::out_of_range &error) {
+                // 3) 올바른 이동 명령인가?
                 return rclcpp_action::GoalResponse::REJECT;
         } // catch
+        // 4-N) route_to_pose_accepted_handle
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
@@ -167,6 +175,7 @@ Center::route_to_pose_cancel_handle(const std::shared_ptr<RouteToPoseGoalHandler
  */
 void Center::route_to_pose_accepted_handle(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
         // this needs to return quickly to avoid blocking the executor, so spin up a new thread
+        // 5) route_to_pose_execute
         std::thread{std::bind(&Center::route_to_pose_execute, this, std::placeholders::_1), goal_handle}.detach();
 }
 
@@ -177,10 +186,11 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         const auto goal = goal_handle->get_goal();
         auto feedback = std::make_shared<RouteToPose::Feedback>();
         auto result = std::make_shared<RouteToPose::Result>();
-        DataTypeTrans data_type_trans;
         std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+        CarBehavior car_behavior;
         while (rclcpp::ok()) {
                 // [Cancel]
+                //5-1) 취소 명령이 있는가?
                 if (goal_handle->is_canceling()) {
                         result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
                         goal_handle->canceled(result);
@@ -188,18 +198,19 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                         return;
                 }
                 // [Exception Handling]
+                //5-2) 센서 데이터가 들어오는가?
                 if (car_->get_location().fn_get_longitude() == 0 && car_->get_location().fn_get_latitude() == 0) {
                         feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
                         goal_handle->publish_feedback(feedback);
                         RCLCPP_INFO(this->get_logger(), "Publish feedback");
                         continue;
                 }
-                // node kind 판단
-                //1-2) 진진 필요
-                if (data_type_trans.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
+
+                //6-1) 진진 주행
+                if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
                         // 목적지 도착 여부
                         // distance_from_perpendicular_line();
-                        GpsData start_node_position= task_->get_cur_gps();
+                        GpsData start_node_position = task_->get_cur_gps();
                         GpsData end_node_position = task_->get_next_gps();
                         GpsData cur_location(car_->get_location().fn_get_latitude(),
                                              car_->get_location().fn_get_longitude());
@@ -214,7 +225,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 
                         //
                         // 직진 주행 명령
-                        geometry_msgs::msg::Twist cmd_vel = calculate_straight_movement(0.1);
+                        geometry_msgs::msg::Twist cmd_vel = calculate_straight_movement(ros_parameter_->max_speed_);
                         pub_cmd_->publish(cmd_vel);
                         // if 도착 명령 확인
                         // else
@@ -222,28 +233,57 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
                         goal_handle->publish_feedback(feedback);
                         RCLCPP_INFO(this->get_logger(), "Publish feedback");
                 }
-                else if(data_type_trans.intersection_judgment(task_->get_cur_node_kind(),task_->get_next_node_kind())){
-                        // 장애물 존재 여부 확인
-                        if(!obs_status_->obstacle_value){
+                //6-2) 회전 주행
+                else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
+                                                                 task_->get_next_node_kind())) {
+                        // 2-5) 장애물 존재 여부 확인
+                        if (!obs_status_->obstacle_value) {
                                 //obstacle_value = ture - 감지, false- 미감지
                                 continue;
-                        }
-                        else{
-                                double goal_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(), car_->get_location());
-                                if(){
+                        } else {
+                                double goal_distance = center_distance->distance_from_perpendicular_line(
+                                        task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+                                // 2-6) 직진 목적지에 도착했는가?
+                                // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
+                                // 최초에는 목적지 도착하여 if문, 이후에는 check를 통해 진입
+                                if (goal_distance < ros_parameter_->rotation_straight_dist_ || (task_->rotation_straight_check_)) {
+                                        // 2-6-1) 도착함
+                                        // 2-7) 교차로 노드 헤딩 정보로 방향 확인
+                                        task_->rotation_straight_check_= true;
+                                        double next_node_heading = task_->get_next_heading();
+                                        double car_heading = car_->get_degree();
+                                        // 2-8) 회전 여부 확인
+                                        if(!car_behavior.car_rotation_judgment(std::abs(car_heading-next_node_heading),ros_parameter_->rotation_angle_tolerance_)) {
+                                                // 2-9) IMU 각도 교차로 헤딩을 통한 방향 확인
+                                                if (car_behavior.car_move_direct(car_->get_degree(),
+                                                                                 task_->get_next_heading())) {
+                                                        //right
+                                                        geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
+                                                                0.1, ros_parameter_->rotation_angle_increase_);
+                                                        pub_cmd_->publish(cmd_vel);
+                                                } else {
+                                                        //left
+                                                        geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
+                                                                0.1, -ros_parameter_->rotation_angle_increase_);
+                                                        pub_cmd_->publish(cmd_vel);
+                                                }
+                                        }
+                                        else{
+                                                // 2-9) 종료
+                                                break;
+                                        }
 
-                                }
-                        }
-                        // 파라미터를 통한 직진 주행 완료 확인
-                        // 파라미터를 통한 직진 주행
-                        // 교차로 노드 헤딩 정보로 방향 확인
-                        // if IMU 각도 - 교차로 heading < 설정 각도
-                        //      회전 주행
-                        // else
-                        //      회전 정지
-                        //      break;
+                                } else {
+                                        //2-6-2) 도착하지 않음
+                                        geometry_msgs::msg::Twist cmd_vel = calculate_straight_movement(ros_parameter_->max_speed_);
+                                        pub_cmd_->publish(cmd_vel);
+                                } // 2-6-2)
+                        }// 2-5)
                 }
+
         } // while
+
+        // 7) 완료 처리
         if (rclcpp::ok()) {
                 result->result = static_cast<int>(kec_driving_code::Result::kSuccess);
                 goal_handle->succeed(result);
@@ -274,7 +314,9 @@ void Center::ros_parameter_setting() {
         this->declare_parameter<float>("driving_calibration_min_angle", SETTING_ZERO);
         this->declare_parameter<float>("driving_calibration_angle_increase", SETTING_ZERO);
         this->declare_parameter<float>("goal_distance", SETTING_ZERO);
-        this->declare_parameter<float>("rotation_straight_dist",SETTING_ZERO);
+        this->declare_parameter<float>("rotation_straight_dist", SETTING_ZERO);
+        this->declare_parameter<float>("rotation_angle_increase",SETTING_ZERO);
+        this->declare_parameter<float>("rotation_angle_tolerance",SETTING_ZERO);
         float imu_correction;
         float max_speed;
         float driving_calibration_min_angle;
@@ -282,20 +324,26 @@ void Center::ros_parameter_setting() {
         float driving_calibration_angle_increase;
         float goal_distance;
         float rotation_straight_dist;
+        float rotation_angle_increase;
+        float rotation_angle_tolerance;
         this->get_parameter("imu_correction", imu_correction);
         this->get_parameter("max_speed", max_speed);
         this->get_parameter("driving_calibration_angle", driving_calibration_min_angle);
         this->get_parameter("driving_calibration_angle", driving_calibration_max_angle);
         this->get_parameter("driving_calibration_angle_increase", driving_calibration_angle_increase);
         this->get_parameter("goal_distance", goal_distance);
-        this->get_parameter("rotation_straight_dist",rotation_straight_dist);
+        this->get_parameter("rotation_straight_dist", rotation_straight_dist);
+        this->get_parameter("rotation_angle_increase",rotation_angle_increase);
+        this->get_parameter("rotation_angle_tolerance",rotation_angle_tolerance);
         ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                         max_speed,
                                                         driving_calibration_max_angle,
                                                         driving_calibration_min_angle,
                                                         driving_calibration_angle_increase,
                                                         goal_distance,
-                                                        rotation_straight_dist);
+                                                        rotation_straight_dist,
+                                                        rotation_angle_increase,
+                                                        rotation_angle_tolerance);
 }
 
 
@@ -344,7 +392,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
  * @param status
  */
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
-        obs_status_= status;
+        obs_status_ = status;
 }
 
 void Center::drive_info_timer() {
