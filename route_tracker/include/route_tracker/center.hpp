@@ -26,7 +26,7 @@
 #include "math/imu_convert.hpp"
 #include "entity/car.hpp"
 #include "task.hpp"
-
+#include "math/car_behavior.hpp"
 /**
  * @brief
  *  [ ] action_server
@@ -99,9 +99,10 @@ private :
     //
     void drive_info_timer();
     //
-    geometry_msgs::msg::Twist calculate_straight_movement(float acceleration);
+    void calculate_straight_movement(float acceleration);
     void start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
-
+    bool cancel_check(const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
+    void car_rotation(CarBehavior car_behavior,double node_heading);
 };
 
 

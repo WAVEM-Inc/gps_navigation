@@ -16,7 +16,8 @@ public:
                           float goal_distance,
                           float rotation_straight_dist,
                           float rotation_angle_increase,
-                          float rotation_angle_tolerance
+                          float rotation_angle_tolerance,
+                          float recovery_goal_tolerance
     )
             : imu_correction_(imu_correction),
               max_speed_(max_speed),
@@ -26,7 +27,8 @@ public:
               goal_distance_(goal_distance),
               rotation_straight_dist_(rotation_straight_dist),
               rotation_angle_increase_(rotation_angle_increase),
-              rotation_angle_tolerance_(rotation_angle_tolerance){
+              rotation_angle_tolerance_(rotation_angle_tolerance),
+              recovery_goal_tolerance_(recovery_goal_tolerance){
     }
 
 public :
@@ -39,6 +41,7 @@ public :
     float rotation_straight_dist_;
     float rotation_angle_increase_;
     float rotation_angle_tolerance_;
+    float recovery_goal_tolerance_;
 };
 
 

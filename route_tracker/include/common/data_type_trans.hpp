@@ -25,6 +25,8 @@ public:
                             return "parking"; //  "주차"
                     case kec_car::DrivingMode::kCrossroads:
                             return "crossroads"; //  "교차로"
+                    case kec_car::DrivingMode::kArrive:
+                            return "arrive";//완료
                     default:
                             return "Unknown Driving Mode";
             }//switch

@@ -9,3 +9,4 @@ route_tracker_node:
     rotation_straight_dist: 5.0
     rotation_angle_increase: 0.1
     rotation_angle_tolerance: 5.0
+    recovery_goal_tolerance: 3.0

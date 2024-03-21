@@ -29,7 +29,8 @@ namespace kec_car{
         kRecovery,
         kStop,
         kParking,
-        kCrossroads
+        kCrossroads,
+        kArrive
     };
 }
 
