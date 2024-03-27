@@ -5,6 +5,7 @@
 #ifndef ROUTE_TRACKER_ROS_PARAMETER_HPP
 #define ROUTE_TRACKER_ROS_PARAMETER_HPP
 
+#include "common/test.h"
 
 class RosParameter {
 public:
@@ -28,7 +29,19 @@ public:
               rotation_straight_dist_(rotation_straight_dist),
               rotation_angle_increase_(rotation_angle_increase),
               rotation_angle_tolerance_(rotation_angle_tolerance),
-              recovery_goal_tolerance_(recovery_goal_tolerance){
+              recovery_goal_tolerance_(recovery_goal_tolerance) {
+#if DEBUG_MODE == 1
+            std::cout << "imu_correction_ : " << imu_correction << '\n' <<
+                      "max_speed_ : " << max_speed << '\n' <<
+                      "driving_calibration_max_angle_ : " << driving_calibration_max_angle << '\n' <<
+                      "driving_calibration_min_angle_ : " << driving_calibration_min_angle << '\n' <<
+                      "driving_calibration_angle_increase_ : " << driving_calibration_angle_increase << '\n' <<
+                      "goal_distance_ : " << goal_distance << '\n' <<
+                      "rotation_straight_dist_ : " << rotation_straight_dist << '\n' <<
+                      "rotation_angle_increase_ : " << rotation_angle_increase << '\n' <<
+                      "rotation_angle_tolerance_ : " << rotation_angle_tolerance << '\n' <<
+                      "recovery_goal_tolerance_ : " << recovery_goal_tolerance << '\n' << std::endl;
+#endif
     }
 
 public :

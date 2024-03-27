@@ -71,6 +71,7 @@ set(source_list
         include/entity/task.hpp
         src/math/car_behavior.cpp
         include/math/car_behavior.hpp
+        include/common/test.h
 )
 
 set(node_name

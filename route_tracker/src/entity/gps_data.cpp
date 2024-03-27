@@ -2,7 +2,6 @@
 // Created by nuc-bt on 24. 3. 4.
 //
 
-
 #include "gps_data.hpp"
 
 double GpsData::fn_get_latitude() const {

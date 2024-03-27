@@ -7,6 +7,7 @@
 #include "distance.hpp"
 #include "common/data_type_trans.hpp"
 
+#include "common/test.h"
 
 #define FIRST_ZONE 0.3
 #define SECOND_ZONE 0.6
@@ -252,12 +253,23 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
  * @param imu
  */
 void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
+#if DEBUG_MODE == 1
+        std::cout <<"[Center]-[imu_callback] : "<<
+                "velocity : " << imu->angular_velocity.x << '\n' <<
+                  "frame_id : " << imu->header.frame_id << '\n' <<
+                  "orientation : " << imu->orientation.x << std::endl;
+#endif
         std::lock_guard<std::mutex> lock(mutex_);
         imu_converter_->set_correction(ros_parameter_->imu_correction_);
         car_->set_degree(static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
+#if DEBUG_MODE == 1
+        std::cout <<"[Center]-[gps_callback] : "<<
+                  "latitude : " << gps->latitude << '\n' <<
+                  "longitude : " << gps->longitude << std::endl;
+#endif
         std::lock_guard<std::mutex> lock(mutex_);
         GpsData data(gps->latitude, gps->longitude);
         car_->set_location(data);
@@ -289,14 +301,15 @@ void Center::ros_parameter_setting() {
         float recovery_goal_tolerance;
         this->get_parameter("imu_correction", imu_correction);
         this->get_parameter("max_speed", max_speed);
-        this->get_parameter("driving_calibration_angle", driving_calibration_min_angle);
-        this->get_parameter("driving_calibration_angle", driving_calibration_max_angle);
+        this->get_parameter("driving_calibration_min_angle", driving_calibration_min_angle);
+        this->get_parameter("driving_calibration_max_angle", driving_calibration_max_angle);
         this->get_parameter("driving_calibration_angle_increase", driving_calibration_angle_increase);
         this->get_parameter("goal_distance", goal_distance);
         this->get_parameter("rotation_straight_dist", rotation_straight_dist);
         this->get_parameter("rotation_angle_increase", rotation_angle_increase);
         this->get_parameter("rotation_angle_tolerance", rotation_angle_tolerance);
         this->get_parameter("recovery_goal_tolerance", recovery_goal_tolerance);
+
         ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                         max_speed,
                                                         driving_calibration_max_angle,
@@ -342,10 +355,20 @@ void Center::calculate_straight_movement(float acceleration) {
 }
 
 void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
-
+#if DEBUG_MODE == 1
+        std::cout <<"[Center]-[odom_callback] : "<<
+                  "position : " << odom->pose.pose.position.x << '\n' <<
+                  "orientation : " << odom->pose.pose.orientation.x << '\n' <<
+                  "frame_id : " << odom->header.frame_id << std::endl;
+#endif
 }
 
 void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
+#if DEBUG_MODE == 1
+        std::cout <<"[Center]-[route_deviation_callback] : "<<
+                  "offcource_status : " << status->offcource_status << '\n' <<
+                  "frame_id : " << status->offcource_goal_distance << std::endl;
+#endif
         // 복구모드 시 갱신 필요 없음.
         // 복구 중 또 들어오는 경우를 방지하기 위함.
         if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery) {
@@ -360,6 +383,11 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
  * @param status
  */
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
+#if DEBUG_MODE == 1
+        std::cout <<"[Center]-[obstacle_status_callback] : "<<
+                  "obstacle_value : " << status->obstacle_value << '\n' <<
+                  "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
+#endif
         obs_status_ = status;
 }
 
@@ -367,10 +395,12 @@ void Center::drive_info_timer() {
         DataTypeTrans data_type_trans;
         route_msgs::msg::DriveState drive_state;
         drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
-        if (drive_state.code.compare("straight") == 0) {
+        if (car_->get_drive_mode() == kec_car::DrivingMode::kStraight) {
                 drive_state.speaker = 1003;
+        } else if (car_->get_drive_mode() == kec_car::DrivingMode::kParking ||
+                   car_->get_drive_mode() == kec_car::DrivingMode::kCrossroads) {
+                drive_state.speaker = 2002;
         }
-
         pub_drive_state_->publish(drive_state);
 }
 
@@ -415,6 +445,12 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                            CarBehavior car_behavior) {
         GpsData cur_location(car_->get_location().fn_get_latitude(),
                              car_->get_location().fn_get_longitude());
+        if (task_->get_cur_node_kind() == kec_car::NodeKind::kEndpoint) {
+                car_->set_drive_mode(kec_car::DrivingMode::kParking);
+        } else {
+                car_->set_drive_mode(kec_car::DrivingMode::kStraight);
+        }
+
         std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
         // 직진 주행을 위한 반복문
         while (rclcpp::ok()) {
@@ -479,14 +515,12 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                                                 }
                                         }// 6-1-5) 복귀 목적지 도착 여부 N
                                         else {
-                                                break;
                                                 car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                                                break;
                                         }// 6-1-5) 복귀 목적지 도착 여부 Y
                                 } // 복귀 주행 반복문
-
                         }
-                }
-                        // 6-1-3-N) 이탈 되었는가?
+                }// 6-1-3-N) 이탈 되었는가?
                 else {
                         //직진 주행 추가
                         calculate_straight_movement(ros_parameter_->max_speed_);
@@ -507,6 +541,9 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                         //obstacle_value = ture - 감지, false- 미감지
                         continue;
                 } else {
+                        if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
+                                car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+                        }
                         double goal_distance = center_distance->distance_from_perpendicular_line(
                                 task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
                         // 회전 주행 알림.
