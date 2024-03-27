@@ -22,6 +22,7 @@ public:
     bool car_rotation_judgment(double degree , double angle_tolerance);
     bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
+    bool waiting_judgment(kec_car::NodeKind start_kind);
 };
 
 

@@ -103,6 +103,8 @@ private :
     void start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     bool cancel_check(const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
     void car_rotation(CarBehavior car_behavior,double node_heading);
+    void straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle ,CarBehavior car_behavior );
+    void turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle,CarBehavior car_behavior);
 };
 
 

@@ -188,146 +188,56 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         auto result = std::make_shared<RouteToPose::Result>();
         std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
         CarBehavior car_behavior;
-        while (rclcpp::ok()) {
-                // [Cancel]
-                //5-1) 취소 명령이 있는가?
-                if (cancel_check(result, goal_handle)) {
-                        return;
-                }
-                // [Exception Handling]
-                //5-2) 센서 데이터가 들어오는가?
-                if (car_->get_location().fn_get_longitude() == 0 && car_->get_location().fn_get_latitude() == 0) {
-                        feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
-                        goal_handle->publish_feedback(feedback);
-                        RCLCPP_INFO(this->get_logger(), "Publish feedback");
-                        continue;
-                }
 
-                //6-1) 진진 주행
-                if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
-                        GpsData cur_location(car_->get_location().fn_get_latitude(),
-                                             car_->get_location().fn_get_longitude());
-                        // 직진 주행을 위한 반복문
-                        while(rclcpp::ok()) {
-                                // 도착지 거리
-                                // 6-1-1) 목적지 도착 여부
-                                // 파라미터 작업
-                                if (center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
-                                                                                      task_->get_next_gps(),
-                                                                                      cur_location) <=
-                                    ros_parameter_->goal_distance_) {
-                                        car_->set_drive_mode(kec_car::DrivingMode::kArrive);
-                                        break;
-                                }
-                                // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
-                                // 6-1-3) 이탈 되었는가?
-                                mutex_.lock();
-                                routedevation_msgs::msg::Status temp_devation_status = *devation_status_;
-                                mutex_.unlock();
-                                // 6-1-3-Y)
-                                if (temp_devation_status.offcource_status) {
-                                        car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
-                                        // 자동차 자세 - 출발지 노드 헤딩 정보 >45 실패
-                                        // 자동차 자세 -> 목적지 노드 헤딩 정보로 사용할지?
-                                        if (abs(car_->get_degree() - task_->get_cur_heading()) > 45) {
-                                                if (rclcpp::ok()) {
-                                                        result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
-                                                        goal_handle->abort(result);
-                                                        RCLCPP_INFO(this->get_logger(), "Goal Failed");
-                                                        return;
-                                                }
-                                        } else {
-                                                // 6-1-4) 복구 목적지 설정
-                                                GpsData gps_data(devation_status_->offcource_goal_lat,
-                                                                 devation_status_->offcource_goal_lon);
-                                                while (rclcpp::ok()) {
-                                                        if (cancel_check(result, goal_handle)) {
-                                                                return;
-                                                        }
-                                                        // 6-1-5) 복귀 목적지 도착 여부 N
-                                                        if (ros_parameter_->recovery_goal_tolerance_ <
-                                                            center_distance->distance_from_perpendicular_line(
-                                                                    car_->get_location(), gps_data,
-                                                                    car_->get_location())) {
+        // [Cancel]
+        //5-1) 취소 명령이 있는가?
+        if (cancel_check(result, goal_handle)) {
+                return;
+        }
 
-                                                                // 6-1-6) 각도 변경 필요? Y
-                                                                if (!car_behavior.car_rotation_judgment(
-                                                                        std::abs(car_->get_degree() -
-                                                                                 task_->get_cur_heading()),
-                                                                        ros_parameter_->rotation_angle_tolerance_)) {
-                                                                        // 6-1-7) 휠제어
-                                                                        car_rotation(car_behavior,
-                                                                                     task_->get_cur_heading());
-                                                                }
-                                                                        // 6-1-6) 각도 변경 필요? N
-                                                                else {
-                                                                        // 6-1-7) 직진
-                                                                        calculate_straight_movement(
-                                                                                ros_parameter_->max_speed_);
-                                                                }
-                                                        }// 6-1-5) 복귀 목적지 도착 여부 N
-                                                        else {
-                                                                break;
-                                                                car_->set_drive_mode(kec_car::DrivingMode::kStop);
-                                                        }// 6-1-5) 복귀 목적지 도착 여부 Y
-                                                } // 복귀 주행 반복문
+        /*
+        // [Exception Handling]
+        //5-2) 센서 데이터가 들어오는가?
+        if (car_->get_location().fn_get_longitude() == 0 && car_->get_location().fn_get_latitude() == 0) {
+                feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
+                goal_handle->publish_feedback(feedback);
+                RCLCPP_INFO(this->get_logger(), "Publish feedback");
+        }
+        */
 
-                                        }
-                                }
-                                        // 6-1-3-N) 이탈 되었는가?
-                                else {
-                                        //직진 주행 추가
-                                        calculate_straight_movement(ros_parameter_->max_speed_);
-                                        //feedback publish
-                                        start_on(feedback, goal_handle);
-                                }
-                        }
-                } // 직진 주행
-                        //6-2) 회전 주행
-                else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
-                                                            task_->get_next_node_kind())) {
-                        // 2-5) 장애물 존재 여부 확인
-                        if (!obs_status_->obstacle_value) {
-                                //obstacle_value = ture - 감지, false- 미감지
+        //6-1) 진진 주행
+        if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
+                straight_move(feedback, result, goal_handle, car_behavior);
+        } // 직진 주행
+                //6-2) 회전 주행
+        else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
+                                                    task_->get_next_node_kind())) {
+                turn_move(feedback, result, goal_handle, car_behavior);
+        } // 회전 주행
+
+                // 대기
+        else if (car_behavior.waiting_judgment(task_->get_cur_node_kind())) {
+                while (rclcpp::ok()) {
+                        // stop
+                        geometry_msgs::msg::Twist stop;
+                        stop.angular.x = 0;
+                        stop.linear.z = 0;
+                        pub_cmd_->publish(stop);
+                        // 교차로 정보 확인
+                        if (obs_status_->obstacle_status == 1 && !obs_status_->obstacle_value) {
                                 continue;
                         } else {
-                                double goal_distance = center_distance->distance_from_perpendicular_line(
-                                        task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
-                                // 회전 주행 알림.
-                                car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
-                                //feedback publish
-                                start_on(feedback, goal_handle);
-
-                                // 2-6) 직진 목적지에 도착했는가?
-                                // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
-                                // 최초에는 목적지 도착하여 if문, 이후에는 check를 통해 진입
-                                if (goal_distance < ros_parameter_->rotation_straight_dist_ ||
-                                    (task_->rotation_straight_check_)) {
-                                        // 2-6-1) 도착함
-                                        // 2-7) 교차로 노드 헤딩 정보로 방향 확인
-                                        task_->rotation_straight_check_ = true;
-                                        double next_node_heading = task_->get_next_heading();
-                                        double car_heading = car_->get_degree();
-                                        // 2-8) 회전 여부 확인
-                                        if (!car_behavior.car_rotation_judgment(
-                                                std::abs(car_heading - next_node_heading),
-                                                ros_parameter_->rotation_angle_tolerance_)) {
-                                                // 2-9) IMU 각도 교차로 헤딩을 통한 방향 확인
-                                                car_rotation(car_behavior,next_node_heading);
-                                        } else {
-                                                // 2-9) 종료
-                                                car_->set_drive_mode(kec_car::DrivingMode::kStop);
-                                                break;
-                                        }
-
-                                } else {
-                                        //2-6-2) 도착하지 않음
-                                        calculate_straight_movement(ros_parameter_->max_speed_);
-                                } // 2-6-2)
-                        }// 2-5)
+                                break;
+                        }
+                }
+                if (task_->get_next_node_kind() == kec_car::NodeKind::kIntersection) {
+                        turn_move(feedback, result, goal_handle, car_behavior);
+                } else {
+                        straight_move(feedback, result, goal_handle, car_behavior);
                 }
 
-        } // while
+        }// 대기
+
 
         // 7) 완료 처리
         if (rclcpp::ok()) {
@@ -424,9 +334,9 @@ void Center::calculate_straight_movement(float acceleration) {
                 }
         } else {
                 //직선 주행
-                result.angular.x=(SETTING_ZERO);
-                result.angular.y=(SETTING_ZERO);
-                result.angular.z=(SETTING_ZERO);
+                result.angular.x = (SETTING_ZERO);
+                result.angular.y = (SETTING_ZERO);
+                result.angular.z = (SETTING_ZERO);
         }
         pub_cmd_->publish(result);
 }
@@ -457,7 +367,7 @@ void Center::drive_info_timer() {
         DataTypeTrans data_type_trans;
         route_msgs::msg::DriveState drive_state;
         drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
-        if(drive_state.code.compare("straight")==0){
+        if (drive_state.code.compare("straight") == 0) {
                 drive_state.speaker = 1003;
         }
 
@@ -498,3 +408,140 @@ void Center::car_rotation(CarBehavior car_behavior, double node_heading) {
                 pub_cmd_->publish(cmd_vel);
         }
 }
+
+void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
+                           const std::shared_ptr<RouteToPose::Result> result,
+                           const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
+                           CarBehavior car_behavior) {
+        GpsData cur_location(car_->get_location().fn_get_latitude(),
+                             car_->get_location().fn_get_longitude());
+        std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+        // 직진 주행을 위한 반복문
+        while (rclcpp::ok()) {
+                if (cancel_check(result, goal_handle)) {
+                        return;
+                }
+                // 도착지 거리
+                // 6-1-1) 목적지 도착 여부
+                // 파라미터 작업
+                if (center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
+                                                                      task_->get_next_gps(),
+                                                                      cur_location) <=
+                    ros_parameter_->goal_distance_) {
+                        car_->set_drive_mode(kec_car::DrivingMode::kArrive);
+                        break;
+                }
+                // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
+                // 6-1-3) 이탈 되었는가?
+                mutex_.lock();
+                routedevation_msgs::msg::Status temp_devation_status = *devation_status_;
+                mutex_.unlock();
+                // 6-1-3-Y)
+                if (temp_devation_status.offcource_status) {
+                        car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
+                        // 자동차 자세 - 출발지 노드 헤딩 정보 >45 실패
+                        // 자동차 자세 -> 목적지 노드 헤딩 정보로 사용할지?
+                        if (abs(car_->get_degree() - task_->get_cur_heading()) > 45) {
+                                if (rclcpp::ok()) {
+                                        result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
+                                        goal_handle->abort(result);
+                                        RCLCPP_INFO(this->get_logger(), "Goal Failed");
+                                        return;
+                                }
+                        } else {
+                                // 6-1-4) 복구 목적지 설정
+                                GpsData gps_data(devation_status_->offcource_goal_lat,
+                                                 devation_status_->offcource_goal_lon);
+                                while (rclcpp::ok()) {
+                                        if (cancel_check(result, goal_handle)) {
+                                                return;
+                                        }
+                                        // 6-1-5) 복귀 목적지 도착 여부 N
+                                        if (ros_parameter_->recovery_goal_tolerance_ <
+                                            center_distance->distance_from_perpendicular_line(
+                                                    car_->get_location(), gps_data,
+                                                    car_->get_location())) {
+
+                                                // 6-1-6) 각도 변경 필요? Y
+                                                if (!car_behavior.car_rotation_judgment(
+                                                        std::abs(car_->get_degree() -
+                                                                 task_->get_cur_heading()),
+                                                        ros_parameter_->rotation_angle_tolerance_)) {
+                                                        // 6-1-7) 휠제어
+                                                        car_rotation(car_behavior,
+                                                                     task_->get_cur_heading());
+                                                }
+                                                        // 6-1-6) 각도 변경 필요? N
+                                                else {
+                                                        // 6-1-7) 직진
+                                                        calculate_straight_movement(
+                                                                ros_parameter_->max_speed_);
+                                                }
+                                        }// 6-1-5) 복귀 목적지 도착 여부 N
+                                        else {
+                                                break;
+                                                car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                                        }// 6-1-5) 복귀 목적지 도착 여부 Y
+                                } // 복귀 주행 반복문
+
+                        }
+                }
+                        // 6-1-3-N) 이탈 되었는가?
+                else {
+                        //직진 주행 추가
+                        calculate_straight_movement(ros_parameter_->max_speed_);
+                        //feedback publish
+                        start_on(feedback, goal_handle);
+                }
+        }
+}
+
+void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
+                       const std::shared_ptr<RouteToPose::Result> result,
+                       const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
+                       CarBehavior car_behavior) {
+        std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+        while (rclcpp::ok()) {
+                // 2-5) 장애물 존재 여부 확인
+                if (!obs_status_->obstacle_value) {
+                        //obstacle_value = ture - 감지, false- 미감지
+                        continue;
+                } else {
+                        double goal_distance = center_distance->distance_from_perpendicular_line(
+                                task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+                        // 회전 주행 알림.
+                        car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+                        //feedback publish
+                        start_on(feedback, goal_handle);
+
+                        // 2-6) 직진 목적지에 도착했는가?
+                        // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
+                        // 최초에는 목적지 도착하여 if문, 이후에는 check를 통해 진입
+                        if (goal_distance < ros_parameter_->rotation_straight_dist_ ||
+                            (task_->rotation_straight_check_)) {
+                                // 2-6-1) 도착함
+                                // 2-7) 교차로 노드 헤딩 정보로 방향 확인
+                                task_->rotation_straight_check_ = true;
+                                double next_node_heading = task_->get_next_heading();
+                                double car_heading = car_->get_degree();
+                                // 2-8) 회전 여부 확인
+                                if (!car_behavior.car_rotation_judgment(
+                                        std::abs(car_heading - next_node_heading),
+                                        ros_parameter_->rotation_angle_tolerance_)) {
+                                        // 2-9) IMU 각도 교차로 헤딩을 통한 방향 확인
+                                        car_rotation(car_behavior, next_node_heading);
+                                } else {
+                                        // 2-9) 종료
+                                        car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                                        task_->rotation_straight_check_ = false;
+                                        break;
+                                }
+
+                        } else {
+                                //2-6-2) 도착하지 않음
+                                calculate_straight_movement(ros_parameter_->max_speed_);
+                        } // 2-6-2)
+                }// 2-5)
+        }
+}
+

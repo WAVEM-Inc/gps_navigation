@@ -72,34 +72,26 @@ bool CarBehavior::car_rotation_judgment(double degree, double angle_tolerance) {
 }
 
 bool CarBehavior::straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
-        /*kec_car::NodeKind start_kind = car_mode_determine(start_node_kind);
-     kec_car::NodeKind end_kind = car_mode_determine(end_node_kind);*/
-        // 연결-연결, 연결-완료, 연결-주행 종료, 연결-일시 정지, 교차로-연결, 교차로-완료, 교차로-주행 종료, 교차로-일시 정지,
-        // 완료-연결, 완료-완료, 완료-주행 종료, 완료-일시 정지, 종점-연결 조건을 확인하여 직진 여부 판단
-        if ((start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kConnecting) ||
-            (start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kComplete) ||
-            (start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kEndpoint) ||
-            (start_kind == kec_car::NodeKind::kConnecting && end_kind == kec_car::NodeKind::kWaiting) ||
-            (start_kind == kec_car::NodeKind::kIntersection && end_kind == kec_car::NodeKind::kConnecting) ||
-            (start_kind == kec_car::NodeKind::kIntersection && end_kind == kec_car::NodeKind::kComplete) ||
-            (start_kind == kec_car::NodeKind::kIntersection && end_kind == kec_car::NodeKind::kEndpoint) ||
-            (start_kind == kec_car::NodeKind::kIntersection && end_kind == kec_car::NodeKind::kWaiting) ||
-            (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kConnecting) ||
-            (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kComplete) ||
-            (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kEndpoint) ||
-            (start_kind == kec_car::NodeKind::kComplete && end_kind == kec_car::NodeKind::kWaiting) ||
-            (start_kind == kec_car::NodeKind::kEndpoint && end_kind == kec_car::NodeKind::kConnecting)) {
+        // 목적지가 회전이거나 출발지가 대기인 경우 false
+        if(end_kind==kec_car::NodeKind::kIntersection || start_kind == kec_car::NodeKind::kWaiting){
+                return false;
+        }
+        else{
+                return true;
+        }
+}
+
+bool CarBehavior::intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
+        if (end_kind==kec_car::NodeKind::kIntersection){
                 return true;
         } else {
                 return false;
         }
 }
 
-bool CarBehavior::intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
-        if ((start_kind==kec_car::NodeKind::kIntersection && end_kind==kec_car::NodeKind::kIntersection)||
-            (start_kind==kec_car::NodeKind::kWaiting && end_kind==kec_car::NodeKind::kIntersection)){
+bool CarBehavior::waiting_judgment(kec_car::NodeKind start_kind) {
+        if(start_kind == kec_car::NodeKind::kWaiting){
                 return true;
-        } else {
-                return false;
         }
+        return false;
 }
