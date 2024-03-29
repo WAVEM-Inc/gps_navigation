@@ -17,7 +17,7 @@ private:
     kec_car::DrivingMode drive_mode_;
     //
     double degree_;
-
+    double speed_;
     GpsData location_;
     // 마찰 계수
     double friction_coefficient_;
@@ -37,7 +37,8 @@ public :
     void set_deceleration(double deceleration);
     kec_car::DrivingMode get_drive_mode() const;
     void set_drive_mode(kec_car::DrivingMode drive_mode);
-
+    double get_speed() const;
+    void set_speed(double speed);
 };
 
 

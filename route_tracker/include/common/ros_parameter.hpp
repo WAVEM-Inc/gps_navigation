@@ -18,7 +18,9 @@ public:
                           float rotation_straight_dist,
                           float rotation_angle_increase,
                           float rotation_angle_tolerance,
-                          float recovery_goal_tolerance
+                          float recovery_goal_tolerance,
+                          float deceleration,
+                          float friction_coefficient
     )
             : imu_correction_(imu_correction),
               max_speed_(max_speed),
@@ -29,7 +31,9 @@ public:
               rotation_straight_dist_(rotation_straight_dist),
               rotation_angle_increase_(rotation_angle_increase),
               rotation_angle_tolerance_(rotation_angle_tolerance),
-              recovery_goal_tolerance_(recovery_goal_tolerance) {
+              recovery_goal_tolerance_(recovery_goal_tolerance),
+              deceleration_(deceleration),
+              friction_coefficient_(friction_coefficient) {
 #if DEBUG_MODE == 1
             std::cout << "imu_correction_ : " << imu_correction << '\n' <<
                       "max_speed_ : " << max_speed << '\n' <<
@@ -40,7 +44,9 @@ public:
                       "rotation_straight_dist_ : " << rotation_straight_dist << '\n' <<
                       "rotation_angle_increase_ : " << rotation_angle_increase << '\n' <<
                       "rotation_angle_tolerance_ : " << rotation_angle_tolerance << '\n' <<
-                      "recovery_goal_tolerance_ : " << recovery_goal_tolerance << '\n' << std::endl;
+                      "recovery_goal_tolerance_ : " << recovery_goal_tolerance << '\n' <<
+                      "deceleration_ : " << deceleration << '\n' <<
+                      "friction_coefficient_ : " << friction_coefficient << '\n' << std::endl;
 #endif
     }
 
@@ -55,6 +61,8 @@ public :
     float rotation_angle_increase_;
     float rotation_angle_tolerance_;
     float recovery_goal_tolerance_;
+    float deceleration_;
+    float friction_coefficient_;
 };
 
 

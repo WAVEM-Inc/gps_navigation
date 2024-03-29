@@ -16,7 +16,7 @@ find_package(tf2 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(routedevation_msgs REQUIRED)
 find_package(obstacle_msgs REQUIRED)
-
+find_package(robot_status_msgs REQUIRED)
 find_package(PROJ REQUIRED CONFIG)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
@@ -44,6 +44,7 @@ set(dependencies
         nav_msgs
         routedevation_msgs
         obstacle_msgs
+        robot_status_msgs
 )
 
 set(source_list

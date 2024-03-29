@@ -97,6 +97,17 @@ void Center::ros_init() {
                           std::placeholders::_1),
                 sub_obstacle_status_options);
 
+        // 속도 정보
+        rclcpp::CallbackGroup::SharedPtr cb_group_velocity;
+        cb_group_velocity = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        rclcpp::SubscriptionOptions sub_velocity_options;
+        sub_velocity_options.callback_group = cb_group_velocity;
+        sub_velocity_status_ = this->create_subscription<robot_status_msgs::msg::VelocityStatus>(
+                constants_->tp_name_drive_break_,
+                default_qos,
+                std::bind(&Center::velocity_status_callback,this,std::placeholders::_1),
+                sub_velocity_options);
+
         //==
         // publisher
         //==
@@ -289,6 +300,8 @@ void Center::ros_parameter_setting() {
         this->declare_parameter<float>("rotation_angle_increase", SETTING_ZERO);
         this->declare_parameter<float>("rotation_angle_tolerance", SETTING_ZERO);
         this->declare_parameter<float>("recovery_goal_tolerance", SETTING_ZERO);
+        this->declare_parameter<float>("deceleration",SETTING_ZERO);
+        this->declare_parameter<float>("friction_coefficient",SETTING_ZERO);
         float imu_correction;
         float max_speed;
         float driving_calibration_min_angle;
@@ -299,6 +312,8 @@ void Center::ros_parameter_setting() {
         float rotation_angle_increase;
         float rotation_angle_tolerance;
         float recovery_goal_tolerance;
+        float deceleration;
+        float friction_coefficient;
         this->get_parameter("imu_correction", imu_correction);
         this->get_parameter("max_speed", max_speed);
         this->get_parameter("driving_calibration_min_angle", driving_calibration_min_angle);
@@ -309,7 +324,8 @@ void Center::ros_parameter_setting() {
         this->get_parameter("rotation_angle_increase", rotation_angle_increase);
         this->get_parameter("rotation_angle_tolerance", rotation_angle_tolerance);
         this->get_parameter("recovery_goal_tolerance", recovery_goal_tolerance);
-
+        this->get_parameter("deceleration",deceleration);
+        this->get_parameter("friction_coefficient",friction_coefficient);
         ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                         max_speed,
                                                         driving_calibration_max_angle,
@@ -319,7 +335,9 @@ void Center::ros_parameter_setting() {
                                                         rotation_straight_dist,
                                                         rotation_angle_increase,
                                                         rotation_angle_tolerance,
-                                                        recovery_goal_tolerance);
+                                                        recovery_goal_tolerance,
+                                                        deceleration,
+                                                        friction_coefficient);
 }
 
 
@@ -388,7 +406,30 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
                   "obstacle_value : " << status->obstacle_value << '\n' <<
                   "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
 #endif
-        obs_status_ = status;
+        std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+        route_msgs::msg::DriveBreak temp_break;
+        if(obs_status_->obstacle_status == 0){
+                if(obs_status_->obstacle_value){
+
+                        if(obs_status_->obstacle_distance >center_distance->distance_braking_calculate(
+                                                                                car_->get_speed(),
+                                                                                car_->get_friction_coefficient(),
+                                                                                car_->get_deceleration())){
+                                // 속도 감속이 필요한 상황
+                                temp_break.break_pressure = 70;
+                                pub_break_->publish(temp_break);
+                        }
+                        else{
+                                // 정지가 필요한 상황
+                                temp_break.break_pressure = 100;
+                                pub_break_->publish(temp_break);
+                        }
+                }
+                else{
+                        temp_break.break_pressure = 0;
+                        pub_break_->publish(temp_break);
+                }
+        }
 }
 
 void Center::drive_info_timer() {
@@ -580,5 +621,9 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                         } // 2-6-2)
                 }// 2-5)
         }
+}
+
+void Center::velocity_status_callback(const robot_status_msgs::msg::VelocityStatus::SharedPtr status) {
+        car_->set_speed(status->current_velocity);
 }
 

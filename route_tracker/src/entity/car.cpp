@@ -49,3 +49,11 @@ kec_car::DrivingMode Car::get_drive_mode() const {
 void Car::set_drive_mode(kec_car::DrivingMode drive_mode) {
     drive_mode_ = drive_mode;
 }
+
+double Car::get_speed() const {
+        return speed_;
+}
+
+void Car::set_speed(double speed) {
+        speed_ = speed;
+}

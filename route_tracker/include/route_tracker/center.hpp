@@ -13,12 +13,14 @@
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
 #include "route_msgs/msg/drive_state.hpp"
 #include "route_msgs/msg/drive_break.hpp"
 #include "routedevation_msgs/msg/status.hpp"
 #include "obstacle_msgs/msg/status.hpp"
+#include "robot_status_msgs/msg/velocity_status.hpp"
 
 //
 #include "common/constants.hpp"
@@ -53,6 +55,7 @@ private :
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
     rclcpp::Subscription<routedevation_msgs::msg::Status>::SharedPtr sub_route_deviation_;
     rclcpp::Subscription<obstacle_msgs::msg::Status>::SharedPtr sub_obstacle_status_;
+    rclcpp::Subscription<robot_status_msgs::msg::VelocityStatus>::SharedPtr sub_velocity_status_;
 
     //field publish
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_;
@@ -96,6 +99,7 @@ private :
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom);
     void route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status);
     void obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status);
+    void velocity_status_callback(const robot_status_msgs::msg::VelocityStatus::SharedPtr status);
     //
     void drive_info_timer();
     //
