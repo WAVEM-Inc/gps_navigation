@@ -150,6 +150,11 @@ void Center::ros_init() {
  */
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
+#if DEBUG_MODE == 1
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::cout <<"[Time] "<<std::ctime(&now_c)<< "[Center]-[route_to_pose_goal_handle] goal start_kind : " <<goal->start_node.kind << "end_kind : " <<goal->end_node.kind <<std::endl;
+#endif
         // 1) goal 수신
         // 2) route_to_pose_goal_handle 호출
         task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
@@ -178,6 +183,11 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
 
 rclcpp_action::CancelResponse
 Center::route_to_pose_cancel_handle(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+#if DEBUG_MODE == 1
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::cout <<"[Time] "<<std::ctime(&now_c)<< "[Center]-[route_to_pose_cancel_handle] Cancel" <<std::endl;
+#endif
         return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -188,10 +198,20 @@ Center::route_to_pose_cancel_handle(const std::shared_ptr<RouteToPoseGoalHandler
 void Center::route_to_pose_accepted_handle(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
         // this needs to return quickly to avoid blocking the executor, so spin up a new thread
         // 5) route_to_pose_execute
+#if DEBUG_MODE == 1
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::cout <<"[Time] "<<std::ctime(&now_c)<< "[Center]-[route_to_pose_accepted_handle] accepted" <<std::endl;
+#endif
         std::thread{std::bind(&Center::route_to_pose_execute, this, std::placeholders::_1), goal_handle}.detach();
 }
 
 void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+#if DEBUG_MODE == 1
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::cout <<"[Time] "<<std::ctime(&now_c)<< "[Center]-[route_to_pose_execute] execute" <<std::endl;
+#endif
         RCLCPP_INFO(this->get_logger(), "Executing goal");
         // max speed
         rclcpp::Rate loop_rate(1);
