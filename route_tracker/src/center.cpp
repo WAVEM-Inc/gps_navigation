@@ -103,7 +103,7 @@ void Center::ros_init() {
         rclcpp::SubscriptionOptions sub_velocity_options;
         sub_velocity_options.callback_group = cb_group_velocity;
         sub_velocity_status_ = this->create_subscription<robot_status_msgs::msg::VelocityStatus>(
-                constants_->tp_name_drive_break_,
+                constants_->tp_name_drive_velocity_,
                 default_qos,
                 std::bind(&Center::velocity_status_callback,this,std::placeholders::_1),
                 sub_velocity_options);
