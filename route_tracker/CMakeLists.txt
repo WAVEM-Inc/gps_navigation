@@ -17,7 +17,6 @@ find_package(nav_msgs REQUIRED)
 find_package(routedevation_msgs REQUIRED)
 find_package(obstacle_msgs REQUIRED)
 find_package(robot_status_msgs REQUIRED)
-find_package(PROJ REQUIRED CONFIG)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
 find_package(GeographicLib REQUIRED)
@@ -87,12 +86,6 @@ ament_target_dependencies(${node_name}
         ${dependencies}
 )
 
-add_definitions(-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H)
-
-target_link_libraries (${node_name}
-        ${GeographicLib_LIBRARIES}
-	PROJ::proj
-)
 install(TARGETS
         ${node_name}
         DESTINATION lib/${PROJECT_NAME}

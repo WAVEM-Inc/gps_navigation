@@ -7,7 +7,6 @@
 
 
 #include "entity/gps_data.hpp"
-#include "proj.h"
 #include "geo_trans.hpp"
 
 class Distance {
