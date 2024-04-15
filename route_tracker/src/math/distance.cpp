@@ -91,7 +91,7 @@ double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData en
                     / std::sqrt(1 + perpendicular_m * perpendicular_m)
                     );
         }
-        return distance;
+        return distance*1000;
     }
 
 Distance::Distance() {}

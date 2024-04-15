@@ -25,7 +25,7 @@ GpsData TaskGoal::get_cur_gps() {
 }
 
 GpsData TaskGoal::get_next_gps() {
-        return GpsData(next_node_.position.longitude,next_node_.position.latitude);
+        return GpsData(next_node_.position.latitude,next_node_.position.longitude);
 }
 
 double TaskGoal::get_next_heading() {
