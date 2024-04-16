@@ -63,7 +63,9 @@ private :
     rclcpp::Publisher<route_msgs::msg::DriveState>::SharedPtr pub_drive_state_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
-
+    rclcpp::TimerBase::SharedPtr timer_ptr_;
+    rclcpp::CallbackGroup::SharedPtr timer_cb_group_;
+    void timer_callback();
     //
     std::unique_ptr<Constants> constants_;
     // field entity

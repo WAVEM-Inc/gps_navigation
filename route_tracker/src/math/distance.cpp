@@ -91,7 +91,7 @@ double Distance::distance_from_perpendicular_line(GpsData start_node, GpsData en
                     / std::sqrt(1 + perpendicular_m * perpendicular_m)
                     );
         }
-        return distance*1000;
+        return distance;
     }
 
 Distance::Distance() {}
@@ -119,9 +119,9 @@ double Distance::distance_gps_to_ktm(GpsData first, GpsData second) {
 
 void Distance::convert_gps_to_ktm(GpsData& original) {
     GeoPoint in_pt;
-    in_pt.x = original.fn_get_latitude();
-    in_pt.y= original.fn_get_longitude();
-    in_pt=geo_trans_.convert(geo_trans_.TM,geo_trans_.GEO,in_pt);
+    in_pt.y = original.fn_get_latitude();
+    in_pt.x= original.fn_get_longitude();
+    in_pt=geo_trans_.convert(geo_trans_.GEO,geo_trans_.TM,in_pt);
     original.fn_set_latitude(in_pt.x);
     original.fn_set_longitude(in_pt.y);
     //return GpsData();
