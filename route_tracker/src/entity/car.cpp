@@ -57,3 +57,11 @@ double Car::get_speed() const {
 void Car::set_speed(double speed) {
         speed_ = speed;
 }
+
+kec_car::Direction Car::get_direction() const {
+    return direction_;
+}
+
+void Car::set_direction(kec_car::Direction direction) {
+    direction_ = direction;
+}

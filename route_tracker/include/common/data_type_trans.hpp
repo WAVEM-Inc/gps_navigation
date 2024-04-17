@@ -48,6 +48,20 @@ public:
                     return kec_car::NodeKind::kWaiting;
             }
     }
+    kec_car::Direction car_direction_determine(const std::string& direction_str) {
+        using DIR = kec_car::Direction;
+        static const std::unordered_map<std::string, DIR> direction_map = {
+                {"forward", DIR::kForward},
+                {"backward", DIR::kBackward}
+        };
+        auto it = direction_map.find(direction_str);
+        if (it != direction_map.end()) {
+            return it->second;
+        } else {
+            // 기본값으로 전진 방향 설정
+            return DIR::kForward;
+        }
+    }
 
 };
 

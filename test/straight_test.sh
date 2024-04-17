@@ -1,4 +1,4 @@
-ros2 topic pub -1 /sensor/ublox/fix sensor_msgs/msg/NavSatFix "header:
+ros2 topic pub /sensor/ublox/fix sensor_msgs/msg/NavSatFix "header:
   stamp:
     sec: 0
     nanosec: 0

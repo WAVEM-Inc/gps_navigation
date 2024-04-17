@@ -15,6 +15,7 @@ class Car {
 private:
     kec_car::NodeKind cur_node_kind_;
     kec_car::DrivingMode drive_mode_;
+    kec_car::Direction direction_;
     //
     double degree_;
     double speed_;
@@ -39,6 +40,8 @@ public :
     void set_drive_mode(kec_car::DrivingMode drive_mode);
     double get_speed() const;
     void set_speed(double speed);
+    kec_car::Direction get_direction() const;
+    void set_direction(kec_car::Direction direction);
 };
 
 

@@ -36,6 +36,7 @@ void Center::ros_init() {
     init_routedevation.offcource_status = 0;
     //
     GpsData data(0, 0);
+
     car_->set_location(data);
     car_->set_degree(0);
     obs_status_ = std::make_shared<obstacle_msgs::msg::Status>(init_obstacle);
@@ -185,6 +186,8 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
 #endif
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
+    DataTypeTrans trans;
+    car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
 
     task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
 
@@ -391,6 +394,9 @@ void Center::ros_parameter_setting() {
 
 
 void Center::calculate_straight_movement(float acceleration) {
+    if(car_->get_direction()==kec_car::Direction::kBackward){
+        acceleration=-acceleration;
+    }
     geometry_msgs::msg::Twist result;
     result.linear.x=(acceleration);
     result.linear.y=(SETTING_ZERO);
@@ -481,7 +487,6 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
 }
 
 void Center::drive_info_timer() {
-    std::cout << "[Center]-[drive_info_timer]" << std::endl;
     DataTypeTrans data_type_trans;
     route_msgs::msg::DriveState drive_state;
     drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
@@ -490,6 +495,14 @@ void Center::drive_info_timer() {
     } else if (car_->get_drive_mode() == kec_car::DrivingMode::kParking ||
                car_->get_drive_mode() == kec_car::DrivingMode::kCrossroads) {
         drive_state.speaker = 2002;
+    }
+    if(task_!= nullptr) {
+        GpsData cur_gps = task_->get_cur_gps();
+        GpsData goal_gps = task_->get_next_gps();
+        drive_state.start_node.position.latitude = cur_gps.fn_get_latitude();
+        drive_state.start_node.position.longitude = cur_gps.fn_get_longitude();
+        drive_state.end_node.position.latitude = goal_gps.fn_get_latitude();
+        drive_state.end_node.position.longitude = goal_gps.fn_get_longitude();
     }
     pub_drive_state_->publish(drive_state);
 }

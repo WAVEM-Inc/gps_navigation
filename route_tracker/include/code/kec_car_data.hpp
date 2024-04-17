@@ -32,6 +32,10 @@ namespace kec_car{
         kCrossroads,
         kArrive
     };
+    enum class Direction{
+        kForward,
+        kBackward
+    };
 }
 
 #endif //ROUTE_TRACKER_KEC_CAR_DATA_HPP
