@@ -79,6 +79,7 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_gps_;
     rclcpp::CallbackGroup::SharedPtr cbg_imu_;
     rclcpp::CallbackGroup::SharedPtr cbg_odom_euler_;
+    bool feedback_check_;
     void timer_callback();
     //
     std::unique_ptr<Constants> constants_;

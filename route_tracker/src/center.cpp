@@ -15,7 +15,7 @@
 #define MAX_DIRECTION 45
 using namespace std::chrono_literals;
 
-Center::Center() : Node("route_tracker_node") {
+Center::Center() : Node("route_tracker_node"),feedback_check_(false) {
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
@@ -307,6 +307,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     if (rclcpp::ok()) {
         result->result = static_cast<int>(kec_driving_code::Result::kSuccess);
         goal_handle->succeed(result);
+        feedback_check_ = false;
         RCLCPP_INFO(this->get_logger(), "Goal succeeded");
     }
 }
@@ -510,8 +511,12 @@ void Center::drive_info_timer() {
 void Center::start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,
                       const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
     feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kStart);
-    goal_handle->publish_feedback(feedback);
+    if(!feedback_check_) {
+        goal_handle->publish_feedback(feedback);
+        feedback_check_=true;
+    }
     //RCLCPP_INFO(this->get_logger(), "Publish feedback");
+
 }
 
 bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
