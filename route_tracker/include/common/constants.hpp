@@ -9,7 +9,8 @@
 #define TP_NAME_IMU "/sensor/imu/data"
 #define TP_NAME_GPS "/sensor/ublox/fix"
 #define TP_NAME_CMD_VEL "/cmd_vel"
-#define TP_NAME_ODOM "/odom"
+#define TP_NAME_ODOM "/drive/odom/origin"
+#define TP_NAME_ODOM_EULAR "/drive/odom/eular"
 #define TP_NAME_ROUTE_DEVIATION "/drive/route_deviation/status"
 #define TP_NAME_OBSTACLE_STATUS "/drive/obstacle/status"
 #define TP_NAME_DRIVE_BREAK "/drive/break"
@@ -29,7 +30,8 @@ public:
         tp_name_obstacle_status_(TP_NAME_OBSTACLE_STATUS),
         tp_name_drive_break_(TP_NAME_DRIVE_BREAK),
         tp_name_drive_info_(TP_NAME_DRIVE_INFO),
-        tp_name_drive_velocity_(TP_NAME_DRIVE_VELOCITY)
+        tp_name_drive_velocity_(TP_NAME_DRIVE_VELOCITY),
+        tp_name_odom_eular_(TP_NAME_ODOM_EULAR)
         {}
 
 public :
@@ -43,6 +45,7 @@ public :
     const std::string tp_name_drive_break_;
     const std::string tp_name_drive_info_;
     const std::string tp_name_drive_velocity_;
+    const std::string tp_name_odom_eular_;
 };
 
 

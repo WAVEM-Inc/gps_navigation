@@ -12,6 +12,7 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
 // custom msg
@@ -51,6 +52,7 @@ private :
 
     // field subscribe
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_odom_eular_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gps_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
     rclcpp::Subscription<routedevation_msgs::msg::Status>::SharedPtr sub_route_deviation_;
@@ -65,6 +67,18 @@ private :
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
     rclcpp::CallbackGroup::SharedPtr timer_cb_group_;
+    rclcpp::CallbackGroup::SharedPtr cbg_action_server_ ;
+    rclcpp::CallbackGroup::SharedPtr cbg_drive_info_timer_ ;
+    rclcpp::CallbackGroup::SharedPtr cbg_cmd_;
+    rclcpp::CallbackGroup::SharedPtr cbg_break_;
+    rclcpp::CallbackGroup::SharedPtr cbg_drive_info_pub_;
+    rclcpp::CallbackGroup::SharedPtr cbg_velocity_;
+    rclcpp::CallbackGroup::SharedPtr cbg_obstacle_status_;
+    rclcpp::CallbackGroup::SharedPtr cbg_route_deviation_;
+    rclcpp::CallbackGroup::SharedPtr cbg_odom_;
+    rclcpp::CallbackGroup::SharedPtr cbg_gps_;
+    rclcpp::CallbackGroup::SharedPtr cbg_imu_;
+    rclcpp::CallbackGroup::SharedPtr cbg_odom_euler_;
     void timer_callback();
     //
     std::unique_ptr<Constants> constants_;
@@ -98,6 +112,7 @@ private :
     void route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu);
     void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps);
+    void odom_eular_callback(const geometry_msgs::msg::PoseStamped::SharedPtr odom_eular);
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom);
     void route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status);
     void obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status);

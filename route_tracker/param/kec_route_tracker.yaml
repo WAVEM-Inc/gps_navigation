@@ -4,7 +4,7 @@ route_tracker_node:
     max_speed: 0.2
     driving_calibration_min_angle: 3.0
     driving_calibration_max_angle: 30.0
-    driving_calibration_angle_increase: 0.1
+    driving_calibration_angle_increase: 5.0
     goal_distance: 0.5
     rotation_straight_dist: 5.0
     rotation_angle_increase: 0.1

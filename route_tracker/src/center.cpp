@@ -19,6 +19,7 @@ Center::Center() : Node("route_tracker_node") {
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
+    car_->set_speed(0);
     ros_parameter_setting();
     ros_init();
 }
@@ -43,53 +44,61 @@ void Center::ros_init() {
 
     auto default_qos = rclcpp::QoS(rclcpp::SystemDefaultsQoS());
     // action_server
-    rclcpp::CallbackGroup::SharedPtr callback_group_action_server = this->create_callback_group(
-            rclcpp::CallbackGroupType::MutuallyExclusive);
+    cbg_action_server_ = this->create_callback_group(
+            rclcpp::CallbackGroupType::Reentrant);
     route_to_pose_action_server_ = rclcpp_action::create_server<RouteToPose>(
             this,
             constants_->tp_name_route_to_pose_,
             std::bind(&Center::route_to_pose_goal_handle, this, std::placeholders::_1, std::placeholders::_2),
             std::bind(&Center::route_to_pose_cancel_handle, this, std::placeholders::_1),
             std::bind(&Center::route_to_pose_accepted_handle, this, std::placeholders::_1),
-            rcl_action_server_get_default_options()
+            rcl_action_server_get_default_options(), cbg_action_server_
     );
 
     //==
     // subscribe
     //==
     // imu callback
-    rclcpp::CallbackGroup::SharedPtr cb_group_imu;
-    cb_group_imu = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+/*    cbg_imu_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_imu_options;
-    sub_imu_options.callback_group = cb_group_imu;
+    sub_imu_options.callback_group = cbg_imu_;
     sub_imu_ = this->create_subscription<sensor_msgs::msg::Imu>(constants_->tp_name_imu_, default_qos,
                                                                 std::bind(&Center::imu_callback, this,
-                                                                          std::placeholders::_1), sub_imu_options);
+                                                                          std::placeholders::_1), sub_imu_options);*/
     // gps callback
-    rclcpp::CallbackGroup::SharedPtr cb_group_gps;
-    cb_group_gps = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    cbg_odom_euler_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions sub_odom_euler_options;
+    sub_odom_euler_options.callback_group = cbg_odom_euler_;
+    sub_odom_eular_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(constants_->tp_name_odom_eular_, default_qos,
+                                                                      std::bind(&Center::odom_eular_callback, this,
+                                                                                std::placeholders::_1), sub_odom_euler_options);
+
+
+    cbg_gps_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_gps_options;
-    sub_gps_options.callback_group = cb_group_gps;
+    sub_gps_options.callback_group = cbg_gps_;
     sub_gps_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(constants_->tp_name_gps_, default_qos,
                                                                       std::bind(&Center::gps_callback, this,
                                                                                 std::placeholders::_1),
                                                                       sub_gps_options);
 
     // odom callback
-    rclcpp::CallbackGroup::SharedPtr cb_group_odom;
-    cb_group_odom = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    cbg_odom_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_odom_options;
-    sub_odom_options.callback_group = cb_group_odom;
+    sub_odom_options.callback_group = cbg_odom_;
     sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(constants_->tp_name_odom_, default_qos,
                                                                    std::bind(&Center::odom_callback, this,
                                                                              std::placeholders::_1),
                                                                    sub_odom_options);
     // route_deviation
     // 경로 이탈
-    rclcpp::CallbackGroup::SharedPtr cb_group_route_deviation;
-    cb_group_route_deviation = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    cbg_route_deviation_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_route_deviation_options;
-    sub_route_deviation_options.callback_group = cb_group_route_deviation;
+    sub_route_deviation_options.callback_group = cbg_route_deviation_;
     sub_route_deviation_ = this->create_subscription<routedevation_msgs::msg::Status>(
             constants_->tp_name_route_deviation_,
             default_qos,
@@ -100,10 +109,10 @@ void Center::ros_init() {
 
     // 장애물 정보
     // obstacle_status
-    rclcpp::CallbackGroup::SharedPtr cb_group_obstacle_status;
-    cb_group_obstacle_status = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    cbg_obstacle_status_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_obstacle_status_options;
-    sub_obstacle_status_options.callback_group = cb_group_obstacle_status;
+    sub_obstacle_status_options.callback_group = cbg_obstacle_status_;
     sub_obstacle_status_ = this->create_subscription<obstacle_msgs::msg::Status>(
             constants_->tp_name_obstacle_status_,
             default_qos,
@@ -113,10 +122,9 @@ void Center::ros_init() {
             sub_obstacle_status_options);
 
     // 속도 정보
-    rclcpp::CallbackGroup::SharedPtr cb_group_velocity;
-    cb_group_velocity = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    cbg_velocity_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_velocity_options;
-    sub_velocity_options.callback_group = cb_group_velocity;
+    sub_velocity_options.callback_group = cbg_velocity_;
     sub_velocity_status_ = this->create_subscription<robot_status_msgs::msg::VelocityStatus>(
             constants_->tp_name_drive_velocity_,
             default_qos,
@@ -127,22 +135,19 @@ void Center::ros_init() {
     // publisher
     //==
     // cmd_vel (이동 정보)
-    rclcpp::CallbackGroup::SharedPtr cb_group_cmd;
-    cb_group_cmd = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    cbg_cmd_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::PublisherOptions pub_cmd_options;
-    pub_cmd_options.callback_group = cb_group_cmd;
+    pub_cmd_options.callback_group = cbg_cmd_;
     pub_cmd_ = this->create_publisher<geometry_msgs::msg::Twist>(constants_->tp_name_cmd_, default_qos,
                                                                  pub_cmd_options);
     // 브레이크 작동
     // 필요시 callback group 이용할 것.
-    rclcpp::CallbackGroup::SharedPtr cb_group_break;
     rclcpp::PublisherOptions pub_break_options;
-    pub_break_options.callback_group = cb_group_break;
+    pub_break_options.callback_group = cbg_break_;
     pub_break_ = this->create_publisher<route_msgs::msg::DriveBreak>(constants_->tp_name_drive_break_,
                                                                      default_qos, pub_break_options);
-    rclcpp::CallbackGroup::SharedPtr cbg_drive_info;
     rclcpp::PublisherOptions pub_drive_info_options;
-    pub_drive_info_options.callback_group = cbg_drive_info;
+    pub_drive_info_options.callback_group = cbg_drive_info_pub_;
     // drive state - 스피커, 주행 모드
     pub_drive_state_ = this->create_publisher<route_msgs::msg::DriveState>(
             constants_->tp_name_drive_info_,
@@ -152,10 +157,10 @@ void Center::ros_init() {
     // 로봇 모드 timer
     //   ㄴ speaker timer
     // 0.1 sec = 100ms
-    rclcpp::CallbackGroup::SharedPtr drive_info_callback_group = this->create_callback_group(
+    cbg_drive_info_timer_ = this->create_callback_group(
             rclcpp::CallbackGroupType::Reentrant);
     timer_drive_state_ = this->create_wall_timer(1s,
-    std::bind(&Center::timer_callback,this),drive_info_callback_group);
+                                                 std::bind(&Center::drive_info_timer,this), cbg_drive_info_timer_);
 #if DEBUG_MODE == 1
     RCLCPP_INFO(this->get_logger(), "setting end");
 #endif
@@ -387,9 +392,9 @@ void Center::ros_parameter_setting() {
 
 void Center::calculate_straight_movement(float acceleration) {
     geometry_msgs::msg::Twist result;
-    result.linear.set__x(acceleration);
-    result.linear.set__y(SETTING_ZERO);
-    result.linear.set__z(SETTING_ZERO);
+    result.linear.x=(acceleration);
+    result.linear.y=(SETTING_ZERO);
+    result.linear.z=(SETTING_ZERO);
     // 현재 각도-노드진입 탈출 각도를 통하여 링크와 얼마나 다른 방향으로 가는지 확인
     const double link_degree = car_->get_degree() - task_->get_cur_heading();
     // 각도에 따라 더 틀지 결정
@@ -400,12 +405,12 @@ void Center::calculate_straight_movement(float acceleration) {
                                                : -ros_parameter_->driving_calibration_angle_increase_;
     if (link_degree > ros_parameter_->driving_calibration_min_angle_) {
         if (link_degree < first_zone) {
-            result.angular.set__z(direction);
+            result.angular.z=direction;
         } else if (link_degree > first_zone &&
                    link_degree < second_zone) {
-            result.angular.set__z(direction * 2);
+            result.angular.z=direction * 2;
         } else if (link_degree > second_zone) {
-            result.angular.set__z(direction * 3);
+            result.angular.z=direction * 3;
         }
     } else {
         //직선 주행
@@ -510,16 +515,21 @@ bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
 void Center::car_rotation(CarBehavior car_behavior, double node_heading) {
     double point_node_heading = node_heading;
     double car_heading = car_->get_degree();
+    float car_speed = car_->get_speed();
+    if(car_speed<=0){
+        car_speed = 0.1;
+    }
+
     if (car_behavior.car_move_direct(car_heading,
                                      point_node_heading)) {
         //right
         geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
-                0.1, ros_parameter_->rotation_angle_increase_);
+                car_speed, ros_parameter_->driving_calibration_max_angle_);
         pub_cmd_->publish(cmd_vel);
     } else {
         //left
         geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
-                0.1, -ros_parameter_->rotation_angle_increase_);
+                car_speed, -ros_parameter_->driving_calibration_max_angle_);
         pub_cmd_->publish(cmd_vel);
     }
 }
@@ -694,3 +704,6 @@ void Center::timer_callback() {
     RCLCPP_INFO(this->get_logger(), "Sending request");
 }
 
+void Center::odom_eular_callback(const geometry_msgs::msg::PoseStamped::SharedPtr odom_eular) {
+    car_->set_degree(odom_eular->pose.orientation.y);
+}
