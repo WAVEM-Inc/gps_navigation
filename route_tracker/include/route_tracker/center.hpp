@@ -45,6 +45,7 @@ public :
     explicit Center();
 
 private :
+    double init_distance ;
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;

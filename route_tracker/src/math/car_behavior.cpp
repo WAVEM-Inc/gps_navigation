@@ -4,6 +4,9 @@
 
 #include "car_behavior.hpp"
 #include <cmath>
+
+#include "common/test.h"
+#include "rcutils/logging_macros.h"
 CarBehavior::CarBehavior() {
 
 }
@@ -26,6 +29,7 @@ bool CarBehavior::car_move_direct(double car_degree, double next_node_degree) {
         }
         // If angle_difference is positive, car should turn right (true)
         // If angle_difference is negative, car should turn left (false)
+
         return angle_difference < 0;
 }
 /**
@@ -67,8 +71,34 @@ geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear,
  * @param angle_tolerance
  * @return bool true : 회전 완료, false : 회전 필요
  */
-bool CarBehavior::car_rotation_judgment(double degree, double angle_tolerance) {
-        return degree < angle_tolerance;
+bool CarBehavior::car_rotation_judgment(double car_degree ,double node_degree , double angle_tolerance) {
+    double degree=0;
+    if(car_degree>=360){
+        car_degree=car_degree-360;
+    }
+    else if(node_degree>=360){
+        node_degree = node_degree-360;
+    }
+
+    if(car_degree>270&& node_degree<90){
+        car_degree= 360-car_degree;
+    }
+    else if(car_degree<90 && node_degree>270){
+        car_degree = 270+car_degree;
+    }
+
+    degree = std::abs(car_degree-node_degree);
+#if DEBUG_MODE ==1
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f", car_degree , node_degree,
+                           degree,angle_tolerance);
+#endif
+    if(degree < angle_tolerance){
+        return true;
+    }
+    else {
+        return false;
+    }
+    //return (degree < angle_tolerance)? true : false;
 }
 
 bool CarBehavior::straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
