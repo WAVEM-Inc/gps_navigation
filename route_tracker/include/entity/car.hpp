@@ -42,6 +42,7 @@ public :
     void set_speed(double speed);
     kec_car::Direction get_direction() const;
     void set_direction(kec_car::Direction direction);
+
 };
 
 

@@ -126,3 +126,18 @@ void Distance::convert_gps_to_ktm(GpsData& original) {
     original.fn_set_longitude(in_pt.y);
     //return GpsData();
 }
+
+double Distance::calculate_line_angle(GpsData cur_place, GpsData end_node) {
+    convert_gps_to_ktm(cur_place);
+    convert_gps_to_ktm(end_node);
+    double delta_x = end_node.fn_get_latitude() - cur_place.fn_get_latitude();
+    double delta_y = end_node.fn_get_longitude() - cur_place.fn_get_longitude();
+    double angle_rad = atan2(delta_y, delta_x);
+    double angle_deg = radian_to_degree(angle_rad) - 90;
+    angle_deg = fmod(angle_deg + 360.0, 360.0);
+    return angle_deg;
+}
+
+double Distance::radian_to_degree(const double radian) {
+    return radian * (180.0 / M_PI);;
+}

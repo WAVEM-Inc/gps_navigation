@@ -22,6 +22,7 @@
 #include "routedevation_msgs/msg/status.hpp"
 #include "obstacle_msgs/msg/status.hpp"
 #include "robot_status_msgs/msg/velocity_status.hpp"
+#include "can_msgs/msg/ad_control_body.hpp"
 
 //
 #include "common/constants.hpp"
@@ -64,6 +65,7 @@ private :
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_;
     rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break_;
     rclcpp::Publisher<route_msgs::msg::DriveState>::SharedPtr pub_drive_state_;
+    rclcpp::Publisher<can_msgs::msg::AdControlBody>::SharedPtr pub_body_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
@@ -80,6 +82,7 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_gps_;
     rclcpp::CallbackGroup::SharedPtr cbg_imu_;
     rclcpp::CallbackGroup::SharedPtr cbg_odom_euler_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_body_;
     bool feedback_check_;
     void timer_callback();
     //
@@ -93,7 +96,7 @@ private :
     std::unique_ptr<TaskGoal> task_;
     //
     std::mutex mutex_;
-
+    bool waiting_check_;
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;
 
@@ -125,7 +128,7 @@ private :
     void calculate_straight_movement(float acceleration);
     void start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     bool cancel_check(const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
-    void car_rotation(CarBehavior car_behavior,double node_heading);
+    void car_rotation(CarBehavior car_behavior,double node_heading, kec_car::NodeKind node_kind);
     void straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle ,CarBehavior car_behavior );
     void turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle,CarBehavior car_behavior);
 };

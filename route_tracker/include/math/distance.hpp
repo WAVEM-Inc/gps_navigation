@@ -16,10 +16,11 @@ public :
     double distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place);
     double distance_braking_calculate(const double velocity, const double friction_coefficient, const double deceleration);
     double distance_gps_to_ktm(GpsData first, GpsData second);
-
+    double calculate_line_angle(GpsData cur_place, GpsData end_node);
 private :
     GeoTrans geo_trans_;
     double degree_to_radian(const double degree);
+    static double radian_to_degree(const double radian);
     void convert_gps_to_ktm(GpsData& original);
 };
 

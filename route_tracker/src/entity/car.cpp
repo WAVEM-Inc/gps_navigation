@@ -65,3 +65,4 @@ kec_car::Direction Car::get_direction() const {
 void Car::set_direction(kec_car::Direction direction) {
     direction_ = direction;
 }
+

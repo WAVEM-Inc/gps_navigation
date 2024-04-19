@@ -21,6 +21,8 @@ private :
 public :
     bool rotation_straight_check_;
     TaskGoal(Node cur_node, Node next_node);
+    Node bypass_cur_node_;
+    Node bypass_next_node_;
     kec_car::NodeKind get_cur_node_kind();
     kec_car::NodeKind get_next_node_kind();
     GpsData get_cur_gps();
