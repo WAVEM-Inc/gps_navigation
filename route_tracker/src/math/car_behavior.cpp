@@ -29,8 +29,12 @@ bool CarBehavior::car_move_direct(double car_degree, double next_node_degree) {
         }
         // If angle_difference is positive, car should turn right (true)
         // If angle_difference is negative, car should turn left (false)
-
-        return angle_difference < 0;
+        if(angle_difference < 0){
+            return true;
+        }
+        else if(angle_difference >= 0){
+            return false;
+        }
 }
 /**
  *
@@ -73,7 +77,7 @@ geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear,
  */
 bool CarBehavior::car_rotation_judgment(double car_degree ,double node_degree , double angle_tolerance) {
     double degree=0;
-    if(car_degree>=360){
+/*    if(car_degree>=360){
         car_degree=car_degree-360;
     }
     else if(node_degree>=360){
@@ -81,24 +85,24 @@ bool CarBehavior::car_rotation_judgment(double car_degree ,double node_degree , 
     }
 
     if(car_degree>270&& node_degree<90){
-        car_degree= 360-car_degree;
+        //degree = std::abs((360-car_degree)-node_degree);
+        degree=std::abs(std::fmod(360-car_degree,360)-node_degree);
     }
     else if(car_degree<90 && node_degree>270){
-        car_degree = 270+car_degree;
-    }
-
-    degree = std::abs(car_degree-node_degree);
-#if DEBUG_MODE ==1
-    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f", car_degree , node_degree,
-                           degree,angle_tolerance);
-#endif
-    if(degree < angle_tolerance){
-        return true;
+        //degree = std::abs((360-node_degree)-car_degree);
+        degree=std::abs(std::fmod(360-node_degree,360)-car_degree);
     }
     else {
-        return false;
-    }
-    //return (degree < angle_tolerance)? true : false;
+        degree = std::abs(car_degree - node_degree);
+    }*/
+    degree = calculateAngleDifference(car_degree,node_degree);
+    double diff = calculateAngleDifference(degree,angle_tolerance);
+#if DEBUG_MODE ==1
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f diff %f", car_degree , node_degree,
+                           degree,angle_tolerance,diff);
+#endif
+
+    return (diff < angle_tolerance)? true : false;
 }
 
 bool CarBehavior::straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
@@ -124,4 +128,47 @@ bool CarBehavior::waiting_judgment(kec_car::NodeKind start_kind) {
                 return true;
         }
         return false;
+}
+double CarBehavior::normalizeAngle(double angle) {
+    // angle을 0부터 360도 사이의 값으로 변환
+    angle = fmod(angle, 360.0);
+    if (angle < 0) {
+        angle += 360.0;
+    }
+    return angle;
+}
+
+double CarBehavior::calculateAngleDifference(double currentAngle, double exitAngle) {
+/*    // 각도를 0부터 360도 사이의 값으로 정규화
+    currentAngle = normalizeAngle(currentAngle);
+    exitAngle = normalizeAngle(exitAngle);
+
+    // 각도 차이 계산
+    double angleDifference = exitAngle - currentAngle;
+
+    // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
+    angleDifference = normalizeAngle(angleDifference);
+#if DEBUG_MODE ==1
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[calculateAngleDifference] currentAngle %f exitAngle %f angleDifference %f", currentAngle , exitAngle,
+                           angleDifference);
+#endif
+    if (angleDifference > 180.0) {
+        angleDifference = 360.0 - angleDifference;
+    }
+    return angleDifference;*/
+    currentAngle = normalizeAngle(currentAngle);
+    exitAngle = normalizeAngle(exitAngle);
+
+    // 각도 차이 계산
+    double angleDifference = exitAngle - currentAngle;
+
+    // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
+    angleDifference = normalizeAngle(angleDifference);
+
+    // 180도를 넘어서면 반대 방향으로 계산
+    if (angleDifference > 180.0) {
+        angleDifference = 360.0 - angleDifference;
+    }
+
+    return angleDifference;
 }

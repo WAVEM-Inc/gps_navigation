@@ -96,6 +96,8 @@ private :
     std::unique_ptr<TaskGoal> task_;
     //
     std::mutex mutex_;
+    std::mutex goal_mutex_;
+    std::condition_variable cv_;
     bool waiting_check_;
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;

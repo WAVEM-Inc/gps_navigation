@@ -23,6 +23,8 @@ public:
     bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool waiting_judgment(kec_car::NodeKind start_kind);
+    double normalizeAngle(double angle);
+    double calculateAngleDifference(double currentAngle, double exitAngle);
 };
 
 
