@@ -95,8 +95,8 @@ bool CarBehavior::car_rotation_judgment(double car_degree ,double node_degree , 
     else {
         degree = std::abs(car_degree - node_degree);
     }*/
-    degree = calculateAngleDifference(car_degree,node_degree);
-    double diff = calculateAngleDifference(degree,angle_tolerance);
+    degree = calculate_angle_difference(car_degree, node_degree);
+    double diff = calculate_angle_difference(degree, angle_tolerance);
 #if DEBUG_MODE ==1
     RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f diff %f", car_degree , node_degree,
                            degree,angle_tolerance,diff);
@@ -129,7 +129,7 @@ bool CarBehavior::waiting_judgment(kec_car::NodeKind start_kind) {
         }
         return false;
 }
-double CarBehavior::normalizeAngle(double angle) {
+double CarBehavior::normalize_angle(double angle) {
     // angle을 0부터 360도 사이의 값으로 변환
     angle = fmod(angle, 360.0);
     if (angle < 0) {
@@ -138,32 +138,32 @@ double CarBehavior::normalizeAngle(double angle) {
     return angle;
 }
 
-double CarBehavior::calculateAngleDifference(double currentAngle, double exitAngle) {
+double CarBehavior::calculate_angle_difference(double current_angle, double exit_angle) {
 /*    // 각도를 0부터 360도 사이의 값으로 정규화
-    currentAngle = normalizeAngle(currentAngle);
-    exitAngle = normalizeAngle(exitAngle);
+    current_angle = normalizeAngle(current_angle);
+    exit_angle = normalizeAngle(exit_angle);
 
     // 각도 차이 계산
-    double angleDifference = exitAngle - currentAngle;
+    double angleDifference = exit_angle - current_angle;
 
     // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
-    angleDifference = normalizeAngle(angleDifference);
+    angleDifference = normalize_angle(angleDifference);
 #if DEBUG_MODE ==1
-    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[calculateAngleDifference] currentAngle %f exitAngle %f angleDifference %f", currentAngle , exitAngle,
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[calculate_angle_difference] current_angle %f exit_angle %f angleDifference %f", current_angle , exit_angle,
                            angleDifference);
 #endif
     if (angleDifference > 180.0) {
         angleDifference = 360.0 - angleDifference;
     }
     return angleDifference;*/
-    currentAngle = normalizeAngle(currentAngle);
-    exitAngle = normalizeAngle(exitAngle);
+    current_angle = normalize_angle(current_angle);
+    exit_angle = normalize_angle(exit_angle);
 
     // 각도 차이 계산
-    double angleDifference = exitAngle - currentAngle;
+    double angleDifference = exit_angle - current_angle;
 
     // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
-    angleDifference = normalizeAngle(angleDifference);
+    angleDifference = normalize_angle(angleDifference);
 
     // 180도를 넘어서면 반대 방향으로 계산
     if (angleDifference > 180.0) {

@@ -15,6 +15,7 @@ enum class quadrant{
 class CarBehavior {
 private :
     quadrant find_angle_quadrant(double degree);
+    double normalize_angle(double angle);
 public:
     CarBehavior();
     bool car_move_direct(double car_degree, double next_node_degree);
@@ -23,8 +24,7 @@ public:
     bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool waiting_judgment(kec_car::NodeKind start_kind);
-    double normalizeAngle(double angle);
-    double calculateAngleDifference(double currentAngle, double exitAngle);
+    double calculate_angle_difference(double current_angle, double exit_angle);
 };
 
 

@@ -5,7 +5,15 @@
 #ifndef ROUTE_TRACKER_KEC_CAR_DATA_HPP
 #define ROUTE_TRACKER_KEC_CAR_DATA_HPP
 
-namespace kec_car{
+namespace kec_car {
+    enum class Type {
+        kWorkNode,
+        kPathNode,
+        kWorkPlaceNode
+    };
+    /**
+     * @brief Required information for node when requesting action
+     */
     enum class NodeKind {
         // 교차로 노드
         kIntersection,
@@ -18,13 +26,27 @@ namespace kec_car{
         // 대기 노드
         kWaiting
     };
-    enum class ActionCode{
+    /**
+     * @brief Required information for node when requesting action
+     */
+    enum class Direction {
+        kForward,
+        kBackward
+    };
+    /**
+     * @brief Required information for node when requesting action
+     */
+    enum class DrivingOption {
+        kOdom,
+        kGps
+    };
+    enum class ActionCode {
         kWaiting,
         kDriving,
         kStop,
-        kSkip
+        kCooperative
     };
-    enum class DrivingMode{
+    enum class DrivingMode {
         kStraight,
         kRecovery,
         kStop,
@@ -32,10 +54,7 @@ namespace kec_car{
         kCrossroads,
         kArrive
     };
-    enum class Direction{
-        kForward,
-        kBackward
-    };
+
 }
 
 #endif //ROUTE_TRACKER_KEC_CAR_DATA_HPP
