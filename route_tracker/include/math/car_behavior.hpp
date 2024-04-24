@@ -18,13 +18,14 @@ private :
     double normalize_angle(double angle);
 public:
     CarBehavior();
-    bool car_move_direct(double car_degree, double next_node_degree);
+    int car_move_direct(double car_degree, double next_node_degree);
     geometry_msgs::msg::Twist calculate_rotation_movement(float linear,float angle);
     bool car_rotation_judgment(double car_degree ,double node_degree , double angle_tolerance);
     bool straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind);
     bool waiting_judgment(kec_car::NodeKind start_kind);
     double calculate_angle_difference(double current_angle, double exit_angle);
+    int determine_direction(double base_angle, double target_angle);
 };
 
 

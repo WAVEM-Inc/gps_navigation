@@ -15,7 +15,7 @@
 #define MAX_DIRECTION 45
 using namespace std::chrono_literals;
 
-Center::Center() : Node("route_tracker_node"),feedback_check_(false),waiting_check_(false) {
+Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false) {
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
@@ -73,9 +73,12 @@ void Center::ros_init() {
     cbg_odom_euler_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     rclcpp::SubscriptionOptions sub_odom_euler_options;
     sub_odom_euler_options.callback_group = cbg_odom_euler_;
-    sub_odom_eular_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(constants_->tp_name_odom_eular_, default_qos,
-                                                                      std::bind(&Center::odom_eular_callback, this,
-                                                                                std::placeholders::_1), sub_odom_euler_options);
+    sub_odom_eular_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(constants_->tp_name_odom_eular_,
+                                                                                 default_qos,
+                                                                                 std::bind(&Center::odom_eular_callback,
+                                                                                           this,
+                                                                                           std::placeholders::_1),
+                                                                                 sub_odom_euler_options);
 
 
     cbg_gps_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -153,11 +156,12 @@ void Center::ros_init() {
     // drive state - 스피커, 주행 모드
     pub_drive_state_ = this->create_publisher<route_msgs::msg::DriveState>(
             constants_->tp_name_drive_info_,
-            1,pub_drive_info_options);
+            1, pub_drive_info_options);
 
     rclcpp::PublisherOptions pub_body_options;
     pub_body_options.callback_group = cbg_pub_body_;
-    pub_body_ = this->create_publisher<can_msgs::msg::AdControlBody>(constants_->tp_name_control_body_,default_qos,pub_body_options);
+    pub_body_ = this->create_publisher<can_msgs::msg::AdControlBody>(constants_->tp_name_control_body_, default_qos,
+                                                                     pub_body_options);
 
     // 로봇 모드 timer
     //   ㄴ speaker timer
@@ -165,7 +169,7 @@ void Center::ros_init() {
     cbg_drive_info_timer_ = this->create_callback_group(
             rclcpp::CallbackGroupType::Reentrant);
     timer_drive_state_ = this->create_wall_timer(std::chrono::milliseconds(10),
-                                                 std::bind(&Center::drive_info_timer,this), cbg_drive_info_timer_);
+                                                 std::bind(&Center::drive_info_timer, this), cbg_drive_info_timer_);
 #if DEBUG_MODE == 2
     RCLCPP_INFO(this->get_logger(), "setting end");
 #endif
@@ -183,11 +187,16 @@ void Center::ros_init() {
 rclcpp_action::GoalResponse
 Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const RouteToPose::Goal> goal) {
 #if DEBUG_MODE == 1
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-    std::cout << "[Time] " << std::ctime(&now_c) << "[Center]-[route_to_pose_goal_handle] goal start_kind : "
-              << goal->start_node.kind << "end_kind : " << goal->end_node.kind << "[id] "<<goal->start_node.node_id<<
-              " [lat] "<<goal->end_node.position.latitude <<" [long] "<<goal->end_node.position.longitude<<std::endl;
+    RCLCPP_INFO(this->get_logger(),
+                "[Center]-[route_to_pose_goal_handle]-[GoalRequest Start]\n"
+                "[Start id] %s [kind] %s [driving_option] %s [direction] %s [lat] %f [long] %f\n"
+                "[End id] %s [kind] %s [driving_option] %s [direction] %s [lat] %f [long] %f",
+                goal->start_node.node_id.c_str(), goal->start_node.kind.c_str(),
+                goal->start_node.driving_option.c_str(),
+                goal->start_node.direction.c_str(), goal->start_node.position.latitude,
+                goal->start_node.position.longitude,
+                goal->end_node.node_id.c_str(), goal->end_node.kind.c_str(), goal->end_node.driving_option.c_str(),
+                goal->end_node.direction.c_str(), goal->end_node.position.latitude, goal->end_node.position.longitude);
 #endif
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
@@ -205,23 +214,27 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
             // 4-Y) 각도가 예외 상황인가?
             // 4-Y-Y) REJECT
             // 4-Y-N) route_to_pose_accepted_handle
-
-            if(car_behavior.car_rotation_judgment(car_->get_degree(),task_->get_cur_heading(),45)==false){
-                now = std::chrono::system_clock::now();
-                std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-                std::cout << "[Time] " << std::ctime(&now_c) << "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Heading Over]"<< std::endl;
+            double check_car_degree = car_->get_degree();
+            double check_cur_task_degree = task_->get_cur_heading();
+            if (car_behavior.car_rotation_judgment(check_car_degree, check_cur_task_degree, 45) == false) {
+                //now = std::chrono::system_clock::now();
+                //std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+#if DEBUG_MODE == 1
+                RCLCPP_INFO(this->get_logger(),
+                            "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Heading Over] car degree %lf , task cur_heading %lf",
+                            check_car_degree, check_cur_task_degree);
+#endif
                 return rclcpp_action::GoalResponse::REJECT;
-            }
-            else{
+            } else {
                 return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
             }
         }
     } //try
     catch (std::out_of_range &error) {
         // 3) 올바른 이동 명령인가?
-        now = std::chrono::system_clock::now();
-        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-        std::cout << "[Time] " << std::ctime(&now_c) << "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Goal Error]"<< std::endl;
+#if DEBUG_MODE == 3
+        RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Goal Error]");
+#endif
         return rclcpp_action::GoalResponse::REJECT;
     } // catch
     // 4-N route_to_pose_accepted_handle
@@ -255,13 +268,9 @@ void Center::route_to_pose_accepted_handle(const std::shared_ptr<RouteToPoseGoal
 
 void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
 #if DEBUG_MODE == 1
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-    std::cout << "[Time] " << std::ctime(&now_c) << "[Center]-[route_to_pose_execute] execute" <<std::endl;
+    RCLCPP_INFO(this->get_logger(),
+                "[Center]-[route_to_pose_execute]-[execute]");
 #endif
-    RCLCPP_INFO(this->get_logger(), "Executing goal");
-    // max speed
-
     const auto goal = goal_handle->get_goal();
     auto feedback = std::make_shared<RouteToPose::Feedback>();
     auto result = std::make_shared<RouteToPose::Result>();
@@ -272,69 +281,67 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     if (cancel_check(result, goal_handle)) {
         return;
     }
-
-    /*
-    // [Exception Handling]
-    //5-2) 센서 데이터가 들어오는가?
-    if (car_->get_location().fn_get_longitude() == 0 && car_->get_location().fn_get_latitude() == 0) {
-            feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kSensorWaiting);
-            goal_handle->publish_feedback(feedback);
-            RCLCPP_INFO(this->get_logger(), "Publish feedback");
-    }
-    */
-
-    double car_latitude = car_->get_location().fn_get_latitude();
-    double car_longitude = car_->get_location().fn_get_longitude();
     GpsData cur_location;
-    cur_location.fn_set_latitude(car_latitude);
-    cur_location.fn_set_longitude(car_longitude);
+    if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
+        double car_latitude = car_->get_location().fn_get_latitude();
+        double car_longitude = car_->get_location().fn_get_longitude();
+        cur_location.fn_set_latitude(car_latitude);
+        cur_location.fn_set_longitude(car_longitude);
+
+    } else if (task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom) {
+        cur_location = task_->get_cur_gps();
+    }
+    // 점검 필요
     init_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
-                                                                             task_->get_next_gps(),
-                                                                             cur_location)+3;
-    //6-1) 진진 주행
-    if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
-        straight_move(feedback, result, goal_handle, car_behavior);
-    } // 직진 주행
-        //6-2) 회전 주행
-    else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
-                                                task_->get_next_node_kind())&&car_behavior.waiting_judgment(task_->get_cur_node_kind())==false) {
-        turn_move(feedback, result, goal_handle, car_behavior);
-    } // 회전 주행
-
-        // 대기
-    else if (car_behavior.waiting_judgment(task_->get_cur_node_kind())) {
-        while (rclcpp::ok()) {
-            // stop
-#if DEBUG_MODE ==1
-            RCLCPP_INFO(this->get_logger(), "[waiting mode] start");
-#endif
-            if(waiting_check_==false) {
-                geometry_msgs::msg::Twist stop;
-                stop.angular.x = 0;
-                stop.linear.z = 0;
-                pub_cmd_->publish(stop);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                // 교차로 정보 확인
-                car_->set_drive_mode(kec_car::DrivingMode::kStop);
-            }
-            if (obs_status_->obstacle_status != 0 && obs_status_->obstacle_value==false) {
-                waiting_check_=true;
-                car_->set_drive_mode(kec_car::DrivingMode::kStraight);
-                break;
-            } else {
-                continue;
-            }
-        }
-        if (task_->get_next_node_kind() == kec_car::NodeKind::kIntersection) {
-            turn_move(feedback, result, goal_handle, car_behavior);
-            car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
-        } else {
+                                                                      task_->get_next_gps(),
+                                                                      cur_location) + 3;
+    if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
+        //6-1) 진진 주행
+        if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
             straight_move(feedback, result, goal_handle, car_behavior);
-            car_->set_drive_mode(kec_car::DrivingMode::kStraight);
-        }
+        } // 직진 주행
+            //6-2) 회전 주행
+        else if (car_behavior.intersection_judgment(task_->get_cur_node_kind(),
+                                                    task_->get_next_node_kind()) &&
+                 car_behavior.waiting_judgment(task_->get_cur_node_kind()) == false) {
+            turn_move(feedback, result, goal_handle, car_behavior);
+        } // 회전 주행
+        else if (car_behavior.waiting_judgment(task_->get_cur_node_kind())) {
+            // 대기
+            while (rclcpp::ok()) {
+                // stop
+#if DEBUG_MODE == 1
+                RCLCPP_INFO(this->get_logger(), "[waiting mode] start");
+#endif
+                if (waiting_check_ == false) {
+                    cmd_stop();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    // 교차로 정보 확인
+                    car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                }
+                if (obs_status_->obstacle_status != 0 && obs_status_->obstacle_value == false) {
+                    waiting_check_ = true;
+                    brake_unlock();
+                    car_->set_drive_mode(kec_car::DrivingMode::kStraight);
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if (task_->get_next_node_kind() == kec_car::NodeKind::kIntersection) {
+                turn_move(feedback, result, goal_handle, car_behavior);
+                car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+            } else {
+                straight_move(feedback, result, goal_handle, car_behavior);
+                car_->set_drive_mode(kec_car::DrivingMode::kStraight);
+            }
 
-    }// 대기
+        }// 대기
+    }
+    else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
+        odom_move(feedback, result, goal_handle);
 
+    }
 
     // 7) 완료 처리
     if (rclcpp::ok()) {
@@ -342,11 +349,11 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         car_->set_drive_mode(kec_car::DrivingMode::kArrive);
         {
             std::unique_lock<std::mutex> ulm(goal_mutex_);
-            cv_.wait_for(ulm,std::chrono::seconds(1));
+            cv_.wait_for(ulm, std::chrono::seconds(1));
         }
         goal_handle->succeed(result);
         feedback_check_ = false;
-        waiting_check_=false;
+        waiting_check_ = false;
         RCLCPP_INFO(this->get_logger(), "Goal successed");
     }
 }
@@ -362,7 +369,7 @@ void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
               "frame_id : " << imu->header.frame_id << '\n' <<
               "orientation : " << imu->orientation.x << std::endl;
 #endif
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     imu_converter_->set_correction(ros_parameter_->imu_correction_);
     car_->set_degree(static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
 }
@@ -373,7 +380,7 @@ void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
               "latitude : " << gps->latitude << '\n' <<
               "longitude : " << gps->longitude << std::endl;
 #endif
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     GpsData data(gps->latitude, gps->longitude);
     car_->set_location(data);
 }
@@ -434,56 +441,24 @@ void Center::ros_parameter_setting() {
 
 
 void Center::calculate_straight_movement(float acceleration) {
-    if(car_->get_direction()==kec_car::Direction::kBackward){
-        acceleration=-acceleration;
+    if (car_->get_direction() == kec_car::Direction::kBackward) {
+        acceleration = -acceleration;
     }
-    geometry_msgs::msg::Twist result;
-    result.linear.x=(acceleration);
-    result.linear.y=(SETTING_ZERO);
-    result.linear.z=(SETTING_ZERO);
-    // 현재 각도-노드진입 탈출 각도를 통하여 링크와 얼마나 다른 방향으로 가는지 확인
+    RCLCPP_INFO(this->get_logger(), "[Center]-[calculate_straight_movement]");
 
-    double car_degree = car_->get_degree();
-    double node_degree = task_->get_cur_heading();
-    if(car_degree>=360){
-        car_degree=car_degree-360;
-    }
-    else if(node_degree>=360){
-        node_degree = node_degree-360;
-    }
+    straight_move_correction(acceleration);
+    /*   if (car_degree >= 360) {
+           car_degree = car_degree - 360;
+       } else if (node_degree >= 360) {
+           node_degree = node_degree - 360;
+       }
 
-    if(car_degree>270&& node_degree<90){
-        car_degree= 360-car_degree;
-    }
-    else if(car_degree<90 && node_degree>270){
-        car_degree = 270+car_degree;
-    }
-
-    const double link_degree =  node_degree-car_degree;
-    // 각도에 따라 더 틀지 결정
-    const double first_zone = ros_parameter_->driving_calibration_max_angle_ * FIRST_ZONE;
-    const double second_zone = ros_parameter_->driving_calibration_max_angle_ * SECOND_ZONE;
-    // 왼쪽/ 오른쪽
-    const double direction = (link_degree > 0) ? ros_parameter_->driving_calibration_angle_increase_
-                                               : ros_parameter_->driving_calibration_angle_increase_;
-
-    RCLCPP_INFO(this->get_logger(), "link _ degree :  %f car %f node %f", link_degree,car_degree,node_degree);
-    if (link_degree > ros_parameter_->driving_calibration_min_angle_) {
-        if (link_degree < first_zone) {
-            result.angular.z=direction;
-        } else if (link_degree > first_zone &&
-                   link_degree < second_zone) {
-            result.angular.z=direction * 2;
-        } else if (link_degree > second_zone) {
-            result.angular.z=direction * 3;
-        }
-    } else {
-        //직선 주행
-/*        result.angular.x = (acceleration);
-        result.angular.y = (SETTING_ZERO);
-        result.angular.z = (SETTING_ZERO);*/
-    }
-    pub_cmd_->publish(result);
+       if (car_degree > 270 && node_degree < 90) {
+           car_degree = 360 - car_degree;
+       } else if (car_degree < 90 && node_degree > 270) {
+           car_degree = 270 + car_degree;
+       }
+       const double link_degree = node_degree - car_degree;*/
 }
 
 void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
@@ -516,7 +491,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
  */
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
 #if DEBUG_MODE == 1
-    std::cout <<"[Center]-[obstacle_status_callback] : "<<
+    std::cout << "[Center]-[obstacle_status_callback] : " <<
               "obstacle_value : " << status->obstacle_value << '\n' <<
               "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
 #endif
@@ -524,7 +499,7 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
     route_msgs::msg::DriveBreak temp_break;
     obs_status_ = status;
     if (obs_status_->obstacle_status == 0) {
-        if (obs_status_->obstacle_value==true) {
+        if (obs_status_->obstacle_value == true) {
             if (obs_status_->obstacle_distance > center_distance->distance_braking_calculate(
                     car_->get_speed(),
                     car_->get_friction_coefficient(),
@@ -534,12 +509,7 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
                 pub_break_->publish(temp_break);
             } else {
                 // 정지가 필요한 상황
-                temp_break.break_pressure = 100;
-                pub_break_->publish(temp_break);
-                geometry_msgs::msg::Twist stop_twist ;
-                stop_twist.linear.x =0;
-                stop_twist.angular.z=0;
-                pub_cmd_->publish(stop_twist);
+                cmd_stop();
             }
         } else {
             temp_break.break_pressure = 0;
@@ -557,14 +527,13 @@ void Center::drive_info_timer() {
     } else if (car_->get_drive_mode() == kec_car::DrivingMode::kParking ||
                car_->get_drive_mode() == kec_car::DrivingMode::kCrossroads) {
         drive_state.speaker = 2002;
-    }
-    else if(car_->get_drive_mode()==kec_car::DrivingMode::kArrive){
+    } else if (car_->get_drive_mode() == kec_car::DrivingMode::kArrive) {
         std::unique_lock<std::mutex> ulm(goal_mutex_);
         cv_.notify_all();
     }
-    if(task_!= nullptr) {
-        drive_state.start_node= task_->bypass_cur_node_;
-        drive_state.end_node= task_->bypass_next_node_;
+    if (task_ != nullptr) {
+        drive_state.start_node = task_->bypass_cur_node_;
+        drive_state.end_node = task_->bypass_next_node_;
     }
     pub_drive_state_->publish(drive_state);
 }
@@ -572,9 +541,9 @@ void Center::drive_info_timer() {
 void Center::start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,
                       const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
     feedback->status_code = static_cast<int>(kec_driving_code::FeedBack::kStart);
-    if(!feedback_check_) {
+    if (!feedback_check_) {
         goal_handle->publish_feedback(feedback);
-        feedback_check_=true;
+        feedback_check_ = true;
     }
     //RCLCPP_INFO(this->get_logger(), "Publish feedback");
 
@@ -599,36 +568,41 @@ void Center::car_rotation(CarBehavior car_behavior, double node_heading, kec_car
 
 
     if (car_behavior.car_move_direct(car_heading,
-                                     point_node_heading)) {
+                                     point_node_heading) == -1) {
         //right
         geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
                 car_speed, -ros_parameter_->driving_calibration_max_angle_);
-#if DEBUG_MODE ==1
+#if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[car_rotation] linear.x %f angular.z %f car_ %f node_ %f",
-                    cmd_vel.linear.x,cmd_vel.angular.z, car_->get_degree(), node_heading);
+                    cmd_vel.linear.x, cmd_vel.angular.z, car_->get_degree(), node_heading);
 #endif
         pub_cmd_->publish(cmd_vel);
-        if(node_kind==kec_car::NodeKind::kIntersection){
+        if (node_kind == kec_car::NodeKind::kIntersection) {
             can_msgs::msg::AdControlBody temp_body;
-            temp_body.right_turn_light=true;
-            temp_body.brake_light=false;
+            temp_body.right_turn_light = true;
+            temp_body.brake_light = false;
             pub_body_->publish(temp_body);
         }
-    } else {
+    } else if (car_behavior.car_move_direct(car_heading,
+                                            point_node_heading) == 1) {
         //left
         geometry_msgs::msg::Twist cmd_vel = car_behavior.calculate_rotation_movement(
                 car_speed, ros_parameter_->driving_calibration_max_angle_);
-#if DEBUG_MODE ==1
+#if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[car_rotation] linear.x %f angular.z %f car_ %f node_ %f",
-                    cmd_vel.linear.x,cmd_vel.angular.z, car_->get_degree(), node_heading);
+                    cmd_vel.linear.x, cmd_vel.angular.z, car_->get_degree(), node_heading);
 #endif
         pub_cmd_->publish(cmd_vel);
-        if(node_kind==kec_car::NodeKind::kIntersection){
+        if (node_kind == kec_car::NodeKind::kIntersection) {
             can_msgs::msg::AdControlBody temp_body;
-            temp_body.left_turn_light=true;
-            temp_body.brake_light=false;
+            temp_body.left_turn_light = true;
+            temp_body.brake_light = false;
             pub_body_->publish(temp_body);
         }
+    } else {
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "[car_rotation] car_ %f node %f", car_->get_degree(), node_heading);
+#endif
     }
 }
 
@@ -651,7 +625,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         }
         // 도착지 거리
         // 6-1-1) 목적지 도착 여부
-        // 파라미터 작업
+        // 자동차 현재 위치 Update
         double car_latitude = car_->get_location().fn_get_latitude();
         double car_longitude = car_->get_location().fn_get_longitude();
         GpsData cur_location;
@@ -661,9 +635,11 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                                                                                  task_->get_next_gps(),
                                                                                  cur_location);
 #if DEBUG_MODE == 1
-        RCLCPP_INFO(this->get_logger(), "[distance] %f", goal_distance);
+        RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-distance %f, init_distance %f", goal_distance,
+                    init_distance);
 #endif
-        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance>init_distance) {
+        // 6-1-1) 목적지 도착 여부
+        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance) {
 #if DEBUG_MODE == 2
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
@@ -674,22 +650,26 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             result_vel.linear.x = 0;
             result_vel.angular.z = 0;
             pub_cmd_->publish(result_vel);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             break;
         }
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
-        mutex_.lock();
-        routedevation_msgs::msg::Status temp_devation_status = *devation_status_;
-        mutex_.unlock();
+        routedevation_msgs::msg::Status temp_devation_status;
+        {
+            mutex_.lock();
+            temp_devation_status = *devation_status_;
+            mutex_.unlock();
+        }
         // 6-1-3-Y)
         if (temp_devation_status.offcource_status) {
-#if DEBUG_MODE ==1
-            RCLCPP_INFO(this->get_logger(), "[recovery mode] start");
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] start");
 #endif
             car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
             // 자동차 자세 - 출발지 노드 헤딩 정보 >45 실패
             // 자동차 자세 -
-            if (car_behavior.car_rotation_judgment(car_->get_degree(),task_->get_cur_heading(),45)== false) {
+            if (car_behavior.car_rotation_judgment(car_->get_degree(), task_->get_cur_heading(), 45) == false) {
                 if (rclcpp::ok()) {
                     result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
                     goal_handle->abort(result);
@@ -697,8 +677,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     return;
                 }
             } else {
-#if DEBUG_MODE ==1
-                RCLCPP_INFO(this->get_logger(), "[recovery mode] goal check success");
+#if DEBUG_MODE == 1
+                RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal check success");
 #endif
                 car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
                 // 6-1-4) 복구 목적지 설정
@@ -706,7 +686,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                                  devation_status_->offcource_goal_lon);
                 GpsData temp_car_degree = car_->get_location();
                 GpsData temp_goal_degree = gps_data;
-                double goal_angle = center_distance->calculate_line_angle(temp_car_degree,temp_goal_degree);
+                double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
                 while (rclcpp::ok()) {
                     if (cancel_check(result, goal_handle)) {
                         return;
@@ -715,23 +695,24 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     double recovery_goal_distance = center_distance->distance_from_perpendicular_line(
                             task_->get_cur_gps(), gps_data,
                             car_->get_location());
-#if DEBUG_MODE ==1
-                    RCLCPP_INFO(this->get_logger(), "[recovery mode] goal distance : %f",recovery_goal_distance);
+#if DEBUG_MODE == 1
+                    RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal distance : %f",
+                                recovery_goal_distance);
 #endif
-                    if (ros_parameter_->recovery_goal_tolerance_ <recovery_goal_distance) {
-#if DEBUG_MODE ==1
+                    if (ros_parameter_->recovery_goal_tolerance_ < recovery_goal_distance) {
+#if DEBUG_MODE == 1
                         // 확인 후 지울 것.
-                        RCLCPP_INFO(this->get_logger(), "[recovery mode] goal_angle : %lf ",
+                        RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal_angle : %lf ",
                                     goal_angle);
 #endif
                         // 6-1-6) 각도 변경 필요? Y
                         if (car_behavior.car_rotation_judgment(
                                 car_->get_degree(),
                                 goal_angle,
-                                ros_parameter_->rotation_angle_tolerance_)==false) {
+                                ros_parameter_->rotation_angle_tolerance_) == false) {
                             // 6-1-7) 휠제어
                             car_rotation(car_behavior,
-                                         goal_angle,task_->get_next_node_kind());
+                                         goal_angle, task_->get_next_node_kind());
                         }
                             // 6-1-6) 각도 변경 필요? N
                         else {
@@ -741,8 +722,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                         }
                     }// 6-1-5) 복귀 목적지 도착 여부 N
                     else {
-#if DEBUG_MODE ==1
-                        RCLCPP_INFO(this->get_logger(), "[recovery mode] goal");
+#if DEBUG_MODE == 1
+                        RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal");
 #endif
                         car_->set_drive_mode(kec_car::DrivingMode::kStop);
                         break;
@@ -754,8 +735,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         else {
             //직진 주행 추가
             //calculate_straight_movement(0.2);
-            calculate_straight_movement(ros_parameter_->max_speed_);
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
+            calculate_straight_movement(ros_parameter_->max_speed_);
             //feedback publish
             start_on(feedback, goal_handle);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -767,7 +748,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                        const std::shared_ptr<RouteToPose::Result> result,
                        const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
                        CarBehavior car_behavior) {
-#if DEBUG_MODE ==1
+#if DEBUG_MODE == 1
     RCLCPP_INFO(this->get_logger(), "[turn_move mode] start");
 #endif
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
@@ -775,7 +756,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
     while (rclcpp::ok()) {
         // 2-5) 장애물 존재 여부 확인
-        if (obs_status_->obstacle_value==true && obs_status_->obstacle_status==0) {
+        if (obs_status_->obstacle_value == true && obs_status_->obstacle_status == 0) {
             //obstacle_value = ture - 감지, false- 미감지
             continue;
         } else {
@@ -788,13 +769,14 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             //feedback publish
             start_on(feedback, goal_handle);
 
-#if DEBUG_MODE ==1
-            RCLCPP_INFO(this->get_logger(), "[turn_move mode] - straight goal check goal_distance %f init %f rotation_straight_dist_ %f "
-            ,goal_distance,init_distance,ros_parameter_->rotation_straight_dist_);
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(),
+                        "[turn_move mode] - straight goal check goal_distance %f init %f rotation_straight_dist_ %f ",
+                        goal_distance, init_distance, ros_parameter_->rotation_straight_dist_);
 #endif
-            double rotaion_straight_dist = std::abs(init_distance-ros_parameter_->rotation_straight_dist_);
-            if(init_distance< ros_parameter_->rotation_straight_dist_){
-                rotaion_straight_dist=rotaion_straight_dist*2;
+            double rotaion_straight_dist = std::abs(init_distance - ros_parameter_->rotation_straight_dist_);
+            if (init_distance < ros_parameter_->rotation_straight_dist_) {
+                rotaion_straight_dist = rotaion_straight_dist * 2;
             }
             // 2-6) 직진 목적지에 도착했는가?
 
@@ -804,7 +786,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 (task_->rotation_straight_check_)) {
                 // 2-6-1) 도착함
                 // 2-7) 교차로 노드 헤딩 정보로 방향 확인
-#if DEBUG_MODE ==1
+#if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode] Turn goal Success");
 #endif
                 task_->rotation_straight_check_ = true;
@@ -814,14 +796,14 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 if (car_behavior.car_rotation_judgment(
                         car_heading,
                         next_node_heading,
-                        ros_parameter_->rotation_angle_tolerance_)==false) {
-                    car_rotation(car_behavior, next_node_heading,task_->get_next_node_kind());
+                        ros_parameter_->rotation_angle_tolerance_) == false) {
+                    car_rotation(car_behavior, next_node_heading, task_->get_next_node_kind());
                 } else {
                     // 2-9) 종료
                     car_->set_drive_mode(kec_car::DrivingMode::kStop);
                     geometry_msgs::msg::Twist turn_success;
-                    turn_success.linear.x=0;
-                    turn_success.angular.z=0;
+                    turn_success.linear.x = 0;
+                    turn_success.angular.z = 0;
                     pub_cmd_->publish(turn_success);
                     task_->rotation_straight_check_ = false;
                     break;
@@ -829,7 +811,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 
             } else {
                 //2-6-2) 도착하지 않음
-#if DEBUG_MODE ==1
+#if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode]-[straight] start");
 #endif
 
@@ -846,5 +828,87 @@ void Center::velocity_status_callback(const robot_status_msgs::msg::VelocityStat
 
 
 void Center::odom_eular_callback(const geometry_msgs::msg::PoseStamped::SharedPtr odom_eular) {
+    car_->set_odom_location(odom_eular->pose.position.x);
     car_->set_degree(odom_eular->pose.orientation.y);
+}
+
+void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
+                       const std::shared_ptr<RouteToPose::Result> result,
+                       const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
+    std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+    RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]");
+    // goal distance setting
+    double goal_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps())+car_->get_odom_location();
+    double acceleration= ros_parameter_->max_speed_;
+    if (car_->get_direction() == kec_car::Direction::kBackward) {
+        acceleration = -acceleration;
+    }
+    else{
+        car_->set_drive_mode(kec_car::DrivingMode::kStraight);
+    }
+    while (rclcpp::ok()) {
+        if (cancel_check(result, goal_handle)) {
+            return;
+        }
+        if(goal_distance-car_->get_odom_location()<ros_parameter_->goal_distance_){
+            cmd_stop();
+            break;
+        }
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] distance %f",goal_distance-car_->get_odom_location());
+        straight_move_correction(static_cast<float>(acceleration));
+        start_on(feedback, goal_handle);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+void Center::straight_move_correction(float acceleration) {
+    geometry_msgs::msg::Twist result_twist;
+    result_twist.linear.x = (acceleration);
+    result_twist.linear.y = (SETTING_ZERO);
+    result_twist.linear.z = (SETTING_ZERO);
+    double car_degree = car_->get_degree();
+    double node_degree = task_->get_cur_heading();
+    CarBehavior car_behavior;
+    const double link_degree = car_behavior.calculate_angle_difference(car_degree, node_degree);
+    double direction = car_behavior.determine_direction(car_degree,node_degree);
+    if(direction>0){
+        direction = -ros_parameter_->driving_calibration_angle_increase_;
+    }
+    else if(direction<0){
+        direction = ros_parameter_->driving_calibration_angle_increase_;
+    }
+    else if(link_degree>ros_parameter_->driving_calibration_min_angle_){
+        direction=0;
+    }
+    const double first_zone = ros_parameter_->driving_calibration_max_angle_ * FIRST_ZONE;
+    const double second_zone = ros_parameter_->driving_calibration_max_angle_ * SECOND_ZONE;
+    RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move_correction] link _ degree :  %f car %f node %f dir %f", link_degree, car_degree, node_degree,direction);
+    if (link_degree > ros_parameter_->driving_calibration_min_angle_) {
+        if (link_degree < first_zone) {
+            result_twist.angular.z = direction;
+        } else if (link_degree > first_zone &&
+                   link_degree < second_zone) {
+            result_twist.angular.z = direction * 2;
+        } else if (link_degree > second_zone) {
+            result_twist.angular.z = direction * 3;
+        }
+    }
+    pub_cmd_->publish(result_twist);
+}
+
+void Center::cmd_stop() {
+    geometry_msgs::msg::Twist stop_twist;
+    stop_twist.linear.x=0;
+    stop_twist.linear.y=0;
+    stop_twist.angular.z=0;
+    pub_cmd_->publish(stop_twist);
+    route_msgs::msg::DriveBreak temp_break;
+    temp_break.break_pressure=100;
+    pub_break_->publish(temp_break);
+}
+
+void Center::brake_unlock() {
+    route_msgs::msg::DriveBreak temp_break;
+    temp_break.break_pressure=0;
+    pub_break_->publish(temp_break);
 }

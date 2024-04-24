@@ -16,7 +16,7 @@ private :
     using Node = route_msgs::msg::Node;
     Node cur_node_;
     Node next_node_;
-
+    kec_car::DrivingOption cur_do_;
     DataTypeTrans trans_;
 public :
     bool rotation_straight_check_;
@@ -30,6 +30,7 @@ public :
 
     double get_cur_heading();
     double get_next_heading();
+    kec_car::DrivingOption get_cur_driving_option();
 };
 
 

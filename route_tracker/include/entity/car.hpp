@@ -20,6 +20,7 @@ private:
     double degree_;
     double speed_;
     GpsData location_;
+    double odom_location_;
     // 마찰 계수
     double friction_coefficient_;
     double deceleration_;
@@ -31,7 +32,6 @@ public :
     void set_degree(double degree);
     const GpsData get_location() const;
     void set_location(const GpsData location);
-
     double get_friction_coefficient() const;
     void set_friction_coefficient(double friction_coefficient);
     double get_deceleration() const;
@@ -42,6 +42,8 @@ public :
     void set_speed(double speed);
     kec_car::Direction get_direction() const;
     void set_direction(kec_car::Direction direction);
+    double get_odom_location() const;
+    void set_odom_location(double odomLocation);
 
 };
 

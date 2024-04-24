@@ -32,4 +32,8 @@ double TaskGoal::get_next_heading() {
         return next_node_.heading;
 }
 
+kec_car::DrivingOption TaskGoal::get_cur_driving_option() {
+    return trans_.driving_option_determine(cur_node_.driving_option);
+}
+
 
