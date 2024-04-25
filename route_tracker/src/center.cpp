@@ -782,7 +782,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 
             // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
             // 최초에는 목적지 도착하여 if문, 이후에는 check를 통해 진입
-            if (goal_distance < (rotaion_straight_dist) ||
+            if (goal_distance < (ros_parameter_->rotation_straight_dist_) ||
                 (task_->rotation_straight_check_)) {
                 // 2-6-1) 도착함
                 // 2-7) 교차로 노드 헤딩 정보로 방향 확인
@@ -836,9 +836,13 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                        const std::shared_ptr<RouteToPose::Result> result,
                        const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
-    RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]");
+
+    cmd_stop();
+
     // goal distance setting
-    double goal_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps())+car_->get_odom_location();
+    double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
+    RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
+    double goal_distance =temp_goal+car_->get_odom_location();
     double acceleration= ros_parameter_->max_speed_;
     if (car_->get_direction() == kec_car::Direction::kBackward) {
         acceleration = -acceleration;
@@ -854,7 +858,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             cmd_stop();
             break;
         }
-        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] distance %f",goal_distance-car_->get_odom_location());
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] goal : %f odom :%f distance %f",goal_distance,car_->get_odom_location(),goal_distance-car_->get_odom_location());
         straight_move_correction(static_cast<float>(acceleration));
         start_on(feedback, goal_handle);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -862,6 +866,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 }
 
 void Center::straight_move_correction(float acceleration) {
+
     geometry_msgs::msg::Twist result_twist;
     result_twist.linear.x = (acceleration);
     result_twist.linear.y = (SETTING_ZERO);
@@ -879,6 +884,9 @@ void Center::straight_move_correction(float acceleration) {
     }
     else if(link_degree>ros_parameter_->driving_calibration_min_angle_){
         direction=0;
+    }
+    if (car_->get_direction() == kec_car::Direction::kBackward) {
+        direction=direction*-1;
     }
     const double first_zone = ros_parameter_->driving_calibration_max_angle_ * FIRST_ZONE;
     const double second_zone = ros_parameter_->driving_calibration_max_angle_ * SECOND_ZONE;

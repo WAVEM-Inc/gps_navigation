@@ -2,11 +2,11 @@ route_tracker_node:
   ros__parameters:
     imu_correction: 1.0
     max_speed: 0.8
-    driving_calibration_min_angle: 5.0
+    driving_calibration_min_angle: 2.0
     driving_calibration_max_angle: 30.0
     driving_calibration_angle_increase: 10.0
     goal_distance: 0.2
-    rotation_straight_dist: 4.5
+    rotation_straight_dist: 1.8
     rotation_angle_increase: 0.1
     rotation_angle_tolerance: 3.0
     recovery_goal_tolerance: 3.0
