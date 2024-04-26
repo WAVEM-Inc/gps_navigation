@@ -17,6 +17,8 @@
 #define TP_NAME_DRIVE_INFO "/drive/info"
 #define TP_NAME_DRIVE_VELOCITY "/drive/velocity/state"
 #define TP_NAME_CONTROL_BODY "/drive/can/ad_control_body"
+#define TP_NAME_OBSTACLE_EVENT "/drive/obstacle/event"
+
 #include<iostream>
 class Constants {
 public:
@@ -32,7 +34,8 @@ public:
         tp_name_drive_info_(TP_NAME_DRIVE_INFO),
         tp_name_drive_velocity_(TP_NAME_DRIVE_VELOCITY),
         tp_name_odom_eular_(TP_NAME_ODOM_EULAR),
-        tp_name_control_body_(TP_NAME_CONTROL_BODY)
+        tp_name_control_body_(TP_NAME_CONTROL_BODY),
+        tp_name_obstacle_event_(TP_NAME_OBSTACLE_EVENT)
         {}
 
 public :
@@ -48,6 +51,7 @@ public :
     const std::string tp_name_drive_velocity_;
     const std::string tp_name_odom_eular_;
     const std::string tp_name_control_body_;
+    const std::string tp_name_obstacle_event_;
 };
 
 

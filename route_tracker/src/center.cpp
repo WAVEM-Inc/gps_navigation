@@ -15,11 +15,12 @@
 #define MAX_DIRECTION 45
 using namespace std::chrono_literals;
 
-Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false) {
+Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false),obstacle_first_check_(false),speaker_seq_(0){
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
     car_->set_speed(0);
+    car_->set_drive_mode(kec_car::DrivingMode::kStop);
     ros_parameter_setting();
     ros_init();
 }
@@ -41,6 +42,7 @@ void Center::ros_init() {
     car_->set_degree(0);
     car_->set_drive_mode(kec_car::DrivingMode::kStop);
     obs_status_ = std::make_shared<obstacle_msgs::msg::Status>(init_obstacle);
+    prev_status_= std::make_shared<obstacle_msgs::msg::Status>(init_obstacle);
     devation_status_ = std::make_shared<routedevation_msgs::msg::Status>(init_routedevation);
 
 
@@ -163,12 +165,17 @@ void Center::ros_init() {
     pub_body_ = this->create_publisher<can_msgs::msg::AdControlBody>(constants_->tp_name_control_body_, default_qos,
                                                                      pub_body_options);
 
+    rclcpp::PublisherOptions pub_obs_event_options;
+    pub_obs_event_options.callback_group=cbg_pub_obs_event_;
+    pub_obs_event_ = this->create_publisher<obstacle_msgs::msg::Status>(constants_->tp_name_obstacle_event_,default_qos,
+                                                                        pub_obs_event_options);
+
     // 로봇 모드 timer
     //   ㄴ speaker timer
     // 0.1 sec = 100ms
     cbg_drive_info_timer_ = this->create_callback_group(
             rclcpp::CallbackGroupType::Reentrant);
-    timer_drive_state_ = this->create_wall_timer(std::chrono::milliseconds(10),
+    timer_drive_state_ = this->create_wall_timer(std::chrono::milliseconds(100),
                                                  std::bind(&Center::drive_info_timer, this), cbg_drive_info_timer_);
 #if DEBUG_MODE == 2
     RCLCPP_INFO(this->get_logger(), "setting end");
@@ -471,17 +478,21 @@ void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
 }
 
 void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     RCLCPP_INFO(this->get_logger(),"[Center]-[route_deviation_callback] offcource_status : %d lat %f log %f, %d distance : %f"
     , status->offcource_status ,status->offcource_goal_lat,status->offcource_goal_lon, car_->get_drive_mode(), status->offcource_goal_distance);
-
+#endif
     // 복구모드 시 갱신 필요 없음.
     // 복구 중 또 들어오는 경우를 방지하기 위함.
     if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery) {
         return;
     }
+    else if(car_->get_drive_mode()==kec_car::DrivingMode::kCrossroads){
+        devation_status_= std::make_shared<routedevation_msgs::msg::Status>();
+        devation_status_->offcource_status=0;
+    }
     devation_status_ = status;
-#endif
+
 }
 
 /**
@@ -495,39 +506,95 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
               "obstacle_value : " << status->obstacle_value << '\n' <<
               "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
 #endif
+
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
     route_msgs::msg::DriveBreak temp_break;
     obs_status_ = status;
     if (obs_status_->obstacle_status == 0) {
-        if (obs_status_->obstacle_value == true) {
-            if (obs_status_->obstacle_distance > center_distance->distance_braking_calculate(
+        if (obs_status_->obstacle_value == 1) {
+/*            if (obs_status_->obstacle_distance > center_distance->distance_braking_calculate(
                     car_->get_speed(),
                     car_->get_friction_coefficient(),
                     car_->get_deceleration())) {
-                // 속도 감속이 필요한 상황
+                *//*
                 temp_break.break_pressure = 70;
                 pub_break_->publish(temp_break);
-            } else {
+                 *//*
+
+
+            } else {*/
                 // 정지가 필요한 상황
                 cmd_stop();
-            }
+                if(prev_status_->obstacle_value==status->obstacle_value&&
+                prev_status_->obstacle_status==status->obstacle_status){
+                    if(obstacle_first_check_==false){
+                        // publish
+                        obstacle_first_check_=true;
+                        pub_obs_event_->publish(*status);
+#if DEBUG_MODE == 1
+                        std::cout << "[Center]-[obstacle event] : " <<
+                                  "obstacle_value : " << status->obstacle_value << '\n' <<
+                                  "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
+#endif
+                    }
+                }
+                else{
+                    obstacle_first_check_=false;
+                }
+
         } else {
             temp_break.break_pressure = 0;
             pub_break_->publish(temp_break);
         }
     }
+    else if (obs_status_->obstacle_status == 2) {
+        if (obs_status_->obstacle_value == 1) {
+/*            if (obs_status_->obstacle_distance > center_distance->distance_braking_calculate(
+                    car_->get_speed(),
+                    car_->get_friction_coefficient(),
+                    car_->get_deceleration())) {
+                *//*
+                temp_break.break_pressure = 70;
+                pub_break_->publish(temp_break);
+                 *//*
+
+
+            } else {*/
+            // 정지가 필요한 상황
+            cmd_stop();
+            if(prev_status_->obstacle_value==status->obstacle_value&&
+               prev_status_->obstacle_status==status->obstacle_status){
+                if(obstacle_first_check_==false){
+                    // publish
+                    obstacle_first_check_=true;
+                    pub_obs_event_->publish(*status);
+#if DEBUG_MODE == 1
+                    std::cout << "[Center]-[obstacle event] : " <<
+                              "obstacle_value : " << status->obstacle_value << '\n' <<
+                              "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
+#endif
+                }
+            }
+            else{
+                obstacle_first_check_=false;
+            }
+
+        } else {
+            temp_break.break_pressure = 0;
+            pub_break_->publish(temp_break);
+        }
+    }
+
+
+    prev_status_= std::shared_ptr<obstacle_msgs::msg::Status>(status);
 }
 
 void Center::drive_info_timer() {
     DataTypeTrans data_type_trans;
     route_msgs::msg::DriveState drive_state;
     drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
-    if (car_->get_drive_mode() == kec_car::DrivingMode::kStraight) {
-        drive_state.speaker = 1003;
-    } else if (car_->get_drive_mode() == kec_car::DrivingMode::kParking ||
-               car_->get_drive_mode() == kec_car::DrivingMode::kCrossroads) {
-        drive_state.speaker = 2002;
-    } else if (car_->get_drive_mode() == kec_car::DrivingMode::kArrive) {
+    drive_state.speaker=speaker_seq_++;
+    if (car_->get_drive_mode() == kec_car::DrivingMode::kArrive) {
         std::unique_lock<std::mutex> ulm(goal_mutex_);
         cv_.notify_all();
     }
@@ -535,6 +602,7 @@ void Center::drive_info_timer() {
         drive_state.start_node = task_->bypass_cur_node_;
         drive_state.end_node = task_->bypass_next_node_;
     }
+    //RCLCPP_INFO(this->get_logger(),"[Center]-drive_info_timer-car : %s",car_->get_drive_mode());
     pub_drive_state_->publish(drive_state);
 }
 
@@ -639,7 +707,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     init_distance);
 #endif
         // 6-1-1) 목적지 도착 여부
-        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance) {
+        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+1) {
 #if DEBUG_MODE == 2
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
@@ -664,7 +732,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         // 6-1-3-Y)
         if (temp_devation_status.offcource_status) {
 #if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] start");
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] start lat %f, long %f",temp_devation_status.offcource_goal_lat,temp_devation_status.offcource_goal_lon);
 #endif
             car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
             // 자동차 자세 - 출발지 노드 헤딩 정보 >45 실패
@@ -696,8 +764,13 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                             task_->get_cur_gps(), gps_data,
                             car_->get_location());
 #if DEBUG_MODE == 1
-                    RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal distance : %f",
-                                recovery_goal_distance);
+                    RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal distance : %f\n"
+                                                    "start_[lat] %f [long] %f\n"
+                                                    "end [lat] %f [long] %f\n"
+                                                    "car_ [lat] %f [long] %f",
+                                recovery_goal_distance,task_->get_cur_gps().fn_get_latitude(),task_->get_cur_gps().fn_get_longitude(),
+                                gps_data.fn_get_latitude(), gps_data.fn_get_longitude(),
+                                car_->get_location().fn_get_latitude(),car_->get_location().fn_get_longitude());
 #endif
                     if (ros_parameter_->recovery_goal_tolerance_ < recovery_goal_distance) {
 #if DEBUG_MODE == 1
@@ -723,7 +796,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     }// 6-1-5) 복귀 목적지 도착 여부 N
                     else {
 #if DEBUG_MODE == 1
-                        RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal");
+                        RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal successed");
 #endif
                         car_->set_drive_mode(kec_car::DrivingMode::kStop);
                         break;
@@ -754,12 +827,9 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
     double init_distance = center_distance->distance_from_perpendicular_line(
             task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+    car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
     while (rclcpp::ok()) {
-        // 2-5) 장애물 존재 여부 확인
-        if (obs_status_->obstacle_value == true && obs_status_->obstacle_status == 0) {
-            //obstacle_value = ture - 감지, false- 미감지
-            continue;
-        } else {
+
             if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
                 car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
             }
@@ -817,7 +887,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 
                 calculate_straight_movement(ros_parameter_->max_speed_);
             } // 2-6-2)
-        }// 2-5)
+
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }

@@ -86,9 +86,9 @@ bool CarBehavior::car_rotation_judgment(double car_degree, double node_degree, d
     double diff = calculate_angle_difference(degree, angle_tolerance);
 #if DEBUG_MODE == 1
     RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR",
-                           "[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f diff %f",
+                           "[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f diff %f result %d",
                            car_degree, node_degree,
-                           degree, angle_tolerance, diff);
+                           degree, angle_tolerance, diff,(diff < angle_tolerance) ? true : false);
 #endif
 
     return (diff < angle_tolerance) ? true : false;

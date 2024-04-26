@@ -66,6 +66,7 @@ private :
     rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break_;
     rclcpp::Publisher<route_msgs::msg::DriveState>::SharedPtr pub_drive_state_;
     rclcpp::Publisher<can_msgs::msg::AdControlBody>::SharedPtr pub_body_;
+    rclcpp::Publisher<obstacle_msgs::msg::Status>::SharedPtr pub_obs_event_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
@@ -83,8 +84,10 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_imu_;
     rclcpp::CallbackGroup::SharedPtr cbg_odom_euler_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_body_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_obs_event_;
     bool feedback_check_;
-    void timer_callback();
+    bool obstacle_first_check_;
+    int speaker_seq_;
     //
     std::unique_ptr<Constants> constants_;
     // field entity
@@ -101,7 +104,7 @@ private :
     bool waiting_check_;
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;
-
+    std::shared_ptr<obstacle_msgs::msg::Status> prev_status_;
     //function
     void ros_parameter_setting();
     void ros_init();
