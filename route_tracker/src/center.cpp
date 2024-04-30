@@ -13,6 +13,7 @@
 #define SECOND_ZONE 0.6
 #define SETTING_ZERO 0.0
 #define MAX_DIRECTION 45
+#define DRIVING_INFO_HZ 100
 using namespace std::chrono_literals;
 
 Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false),obstacle_first_check_(false),speaker_seq_(0){
@@ -175,7 +176,7 @@ void Center::ros_init() {
     // 0.1 sec = 100ms
     cbg_drive_info_timer_ = this->create_callback_group(
             rclcpp::CallbackGroupType::Reentrant);
-    timer_drive_state_ = this->create_wall_timer(std::chrono::milliseconds(100),
+    timer_drive_state_ = this->create_wall_timer(std::chrono::milliseconds(DRIVING_INFO_HZ),
                                                  std::bind(&Center::drive_info_timer, this), cbg_drive_info_timer_);
 #if DEBUG_MODE == 2
     RCLCPP_INFO(this->get_logger(), "setting end");
@@ -299,9 +300,16 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         cur_location = task_->get_cur_gps();
     }
     // 점검 필요
+/*    init_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
+                                                                      task_->get_next_gps(),
+                                                                      cur_location) + 3;*/
     init_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
                                                                       task_->get_next_gps(),
-                                                                      cur_location) + 3;
+                                                                      cur_location);
+#if DEBUG_MODE == 1
+    RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] init_dist %f",init_distance);
+#endif
+
     if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
         //6-1) 진진 주행
         if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
@@ -376,9 +384,9 @@ void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
               "frame_id : " << imu->header.frame_id << '\n' <<
               "orientation : " << imu->orientation.x << std::endl;
 #endif
-    std::unique_lock<std::mutex> lock(mutex_);
-    imu_converter_->set_correction(ros_parameter_->imu_correction_);
-    car_->set_degree(static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
+    //std::unique_lock<std::mutex> lock(mutex_);
+    //imu_converter_->set_correction(ros_parameter_->imu_correction_);
+    //car_->set_degree(static_cast<float>(imu_converter_->quaternion_to_heading_converter(imu)));
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
@@ -713,13 +721,24 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 #endif
             route_msgs::msg::DriveBreak drive_break;
             drive_break.break_pressure = 100;
-            //pub_break_->publish(drive_break);
+            pub_break_->publish(drive_break);
             geometry_msgs::msg::Twist result_vel;
             result_vel.linear.x = 0;
             result_vel.angular.z = 0;
             pub_cmd_->publish(result_vel);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             break;
+        }
+        if(init_distance*0.4>goal_distance){
+            route_msgs::msg::DriveBreak drive_break;
+            double break_pressure= 100-std::sqrt(goal_distance)*10;
+            break_pressure = std::fmod(break_pressure,100);
+            //drive_break.break_pressure = break_pressure;
+            drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-brake %d", drive_break.break_pressure);
+#endif
+            pub_break_->publish(drive_break);
         }
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
