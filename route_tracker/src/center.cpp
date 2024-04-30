@@ -495,6 +495,9 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
     if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery) {
         return;
     }
+/*    if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery && status->offcource_status==true){
+        return;
+    }*/
     else if(car_->get_drive_mode()==kec_car::DrivingMode::kCrossroads){
         devation_status_= std::make_shared<routedevation_msgs::msg::Status>();
         devation_status_->offcource_status=0;

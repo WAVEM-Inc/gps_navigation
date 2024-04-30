@@ -5,6 +5,13 @@
 #include "route_tracker/center.hpp"
 
 int main(int argc, char** argv){
+    std::cout<<
+             R"(
+ ██████  ██████  ███████         ███    ██  █████  ██    ██ ██
+██       ██   ██ ██              ████   ██ ██   ██ ██    ██ ██
+██   ███ ██████  ███████         ██ ██  ██ ███████ ██    ██ ██
+██    ██ ██           ██         ██  ██ ██ ██   ██  ██  ██  ██
+ ██████  ██      ███████ ███████ ██   ████ ██   ██   ████   ██)"<<std::endl;
     rclcpp::init(argc, argv);
     //rclcpp::spin(std::make_shared<Center>());
     rclcpp::executors::MultiThreadedExecutor executor;
