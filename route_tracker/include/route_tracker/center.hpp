@@ -102,6 +102,7 @@ private :
     std::mutex goal_mutex_;
     std::condition_variable cv_;
     bool waiting_check_;
+    float prev_speed_; // 가속을 위함.
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;
     std::shared_ptr<obstacle_msgs::msg::Status> prev_status_;
@@ -109,6 +110,7 @@ private :
     void ros_parameter_setting();
     void ros_init();
     void cmd_stop();
+    float acc_apply_speed();
     rclcpp_action::GoalResponse route_to_pose_goal_handle(
             const rclcpp_action::GoalUUID& uuid,
             std::shared_ptr<const RouteToPose::Goal> goal
