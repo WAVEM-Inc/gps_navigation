@@ -397,7 +397,7 @@ void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     std::cout << "[Center]-[gps_callback] : " <<
               "latitude : " << gps->latitude << '\n' <<
               "longitude : " << gps->longitude << std::endl;
@@ -506,6 +506,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
     if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery) {
         return;
     }
+
 /*    if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery && status->offcource_status==true){
         return;
     }*/
@@ -730,7 +731,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     init_distance);
 #endif
         // 6-1-1) 목적지 도착 여부
-        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance >= init_distance) {
+        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+0.1) {
 #if DEBUG_MODE == 2
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
@@ -745,6 +746,27 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             break;
         }
+ /*       if(init_distance*0.4>goal_distance){
+            route_msgs::msg::DriveBreak drive_break;
+            //double break_pressure= 100-std::sqrt(goal_distance)*10;
+            double break_pressure= std::sqrt(goal_distance);
+            if(break_pressure>car_->get_speed()){
+                break_pressure= std::fabs(car_->get_speed());
+            }
+            break_pressure = ((ros_parameter_->max_speed_)*3.6) - break_pressure;
+            if(break_pressure>car_->get_speed()){
+                break_pressure= std::fabs(car_->get_speed());
+            }
+            else if (break_pressure<0){
+                break_pressure=0;
+            }
+            drive_break.break_pressure = static_cast<int>(break_pressure);
+            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-brake %d", drive_break.break_pressure);
+#endif
+            pub_break_->publish(drive_break);
+        }*/
         if(init_distance*0.4>goal_distance){
             route_msgs::msg::DriveBreak drive_break;
             //double break_pressure= 100-std::sqrt(goal_distance)*10;
@@ -752,7 +774,10 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             if(break_pressure>car_->get_speed()){
                 break_pressure= car_->get_speed();
             }
-            break_pressure = ((ros_parameter_->max_speed_)*3.6-1.0) - break_pressure;
+            break_pressure = ((ros_parameter_->max_speed_)*3.6-1) - break_pressure;
+            if (break_pressure<0){
+                break_pressure=0;
+            }
             drive_break.break_pressure = static_cast<int>(break_pressure);
             //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
 #if DEBUG_MODE == 1
@@ -772,6 +797,10 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             temp_devation_status = *devation_status_;
             mutex_.unlock();
         }
+        if(task_->get_cur_dir()==kec_car::Direction::kBackward){
+            temp_devation_status.offcource_status=0;
+        }
+
         // 6-1-3-Y)
         if (temp_devation_status.offcource_status) {
 #if DEBUG_MODE == 1
@@ -858,7 +887,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
             float speed = acc_apply_speed();
 #if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- recovery acc speed %f",speed);
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f",speed);
 #endif
             calculate_straight_movement(speed);
             //feedback publish
@@ -919,6 +948,19 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                         next_node_heading,
                         ros_parameter_->rotation_angle_tolerance_) == false) {
                     car_rotation(car_behavior, next_node_heading, task_->get_next_node_kind());
+
+                    //temp
+                    if(car_behavior.calculate_angle_difference(car_heading,next_node_heading)<5){
+                            route_msgs::msg::DriveBreak drive_break;
+
+                            drive_break.break_pressure =2;
+                            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
+#if DEBUG_MODE == 1
+                            RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake %d", drive_break.break_pressure);
+#endif
+                            pub_break_->publish(drive_break);
+                    }
+                    //
                 } else {
                     // 2-9) 종료
                     car_->set_drive_mode(kec_car::DrivingMode::kStop);
@@ -942,6 +984,30 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f",speed);
 #endif
                 calculate_straight_movement(speed);
+                //
+                if(init_distance*0.4>goal_distance){
+                    route_msgs::msg::DriveBreak drive_break;
+                    //double break_pressure= 100-std::sqrt(goal_distance)*10;
+                    double break_pressure= std::sqrt(goal_distance);
+                    if(break_pressure>car_->get_speed()){
+                        break_pressure= std::fabs(car_->get_speed());
+                    }
+                    break_pressure = ((ros_parameter_->max_speed_)*3.6) - break_pressure;
+                    if(break_pressure>car_->get_speed()){
+                        break_pressure= std::fabs(car_->get_speed());
+                    }
+                    else if (break_pressure<0){
+                        break_pressure=0;
+                    }
+                    drive_break.break_pressure = static_cast<int>(break_pressure);
+                    //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
+#if DEBUG_MODE == 1
+                    RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake %d", drive_break.break_pressure);
+#endif
+                    pub_break_->publish(drive_break);
+                }
+                //1
+
             } // 2-6-2)
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -985,13 +1051,19 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             break;
         }
         // 240502
-        if(goal_distance*0.4>goal_distance-car_->get_odom_location()){
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test %lf - %lf", temp_goal,goal_distance-car_->get_odom_location() );
+#endif
+        if(temp_goal*0.4>goal_distance-car_->get_odom_location()){
             route_msgs::msg::DriveBreak drive_break;
             //double break_pressure= 100-std::sqrt(goal_distance)*10;
-            double break_pressure= std::sqrt(goal_distance);
+            double break_pressure= std::sqrt(goal_distance-car_->get_odom_location());
             if(break_pressure>car_->get_speed()){
                 break_pressure= car_->get_speed();
             }
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test2 %lf - %lf - %lf", break_pressure,goal_distance-car_->get_odom_location(),car_->get_speed());
+#endif
             break_pressure = ((ros_parameter_->max_speed_)*3.6-1.0) - break_pressure;
             drive_break.break_pressure = static_cast<int>(break_pressure);
             //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);

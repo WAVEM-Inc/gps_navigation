@@ -36,4 +36,8 @@ kec_car::DrivingOption TaskGoal::get_cur_driving_option() {
     return trans_.driving_option_determine(cur_node_.driving_option);
 }
 
+kec_car::Direction TaskGoal::get_cur_dir() {
+    return trans_.car_direction_determine(cur_node_.direction);
+}
+
 

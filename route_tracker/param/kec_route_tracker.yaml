@@ -5,10 +5,10 @@ route_tracker_node:
     driving_calibration_min_angle: 1.0
     driving_calibration_max_angle: 30.0
     driving_calibration_angle_increase: 10.0
-    goal_distance: 0.2
-    rotation_straight_dist: 1.8
+    goal_distance: 0.5
+    rotation_straight_dist: 1.6
     rotation_angle_increase: 0.1
-    rotation_angle_tolerance: 3.0
+    rotation_angle_tolerance: 0.2 # 3-> 0.5
     recovery_goal_tolerance: 0.2
     deceleration: 9.8
     friction_coefficient: 0.7

@@ -90,7 +90,6 @@ bool CarBehavior::car_rotation_judgment(double car_degree, double node_degree, d
                            car_degree, node_degree,
                            degree, angle_tolerance, diff,(diff < angle_tolerance) ? true : false);
 #endif
-
     return (diff < angle_tolerance) ? true : false;
 }
 
