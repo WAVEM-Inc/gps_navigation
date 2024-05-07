@@ -613,6 +613,9 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
     prev_status_= std::shared_ptr<obstacle_msgs::msg::Status>(status);
 }
 
+/**
+ * @brief robot drive/info timer
+ */
 void Center::drive_info_timer() {
     DataTypeTrans data_type_trans;
     route_msgs::msg::DriveState drive_state;
@@ -637,8 +640,6 @@ void Center::start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,
         goal_handle->publish_feedback(feedback);
         feedback_check_ = true;
     }
-    //RCLCPP_INFO(this->get_logger(), "Publish feedback");
-
 }
 
 bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
@@ -742,7 +743,10 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             result_vel.linear.x = 0;
             result_vel.angular.z = 0;
             pub_cmd_->publish(result_vel);*/
-            cmd_stop();
+
+            //cmd_stop();
+            car_behavior.cmd_slowly_stop(pub_cmd_,pub_break_);
+            prev_speed_ = 0;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             break;
         }
@@ -767,24 +771,11 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 #endif
             pub_break_->publish(drive_break);
         }*/
-        if(init_distance*0.4>goal_distance){
-            route_msgs::msg::DriveBreak drive_break;
-            //double break_pressure= 100-std::sqrt(goal_distance)*10;
-            double break_pressure= std::sqrt(goal_distance);
-            if(break_pressure>car_->get_speed()){
-                break_pressure= car_->get_speed();
-            }
-            break_pressure = ((ros_parameter_->max_speed_)*3.6-1) - break_pressure;
-            if (break_pressure<0){
-                break_pressure=0;
-            }
-            drive_break.break_pressure = static_cast<int>(break_pressure);
-            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-brake %d", drive_break.break_pressure);
-#endif
-            pub_break_->publish(drive_break);
-        }
+
+        // 노드 인근 감속
+        car_behavior.determine_brake_pressure(init_distance,goal_distance,ros_parameter_->max_speed_,pub_break_);
+
+
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
         /* routedevation_msgs::msg::Status temp_devation_status;
@@ -1087,7 +1078,6 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 }
 
 void Center::straight_move_correction(float acceleration) {
-
     geometry_msgs::msg::Twist result_twist;
     result_twist.linear.x = (acceleration);
     result_twist.linear.y = (SETTING_ZERO);

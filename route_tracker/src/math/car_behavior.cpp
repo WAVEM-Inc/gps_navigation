@@ -7,6 +7,7 @@
 
 #include "common/test.h"
 #include "rcutils/logging_macros.h"
+#define SLOW_STOP_NUM 4
 
 CarBehavior::CarBehavior() {
 
@@ -187,4 +188,39 @@ int CarBehavior::determine_direction(double base_angle, double target_angle) {
     else{
         return 0;
     }
+}
+
+/**
+ * @brief Function to determine and publish brake pressure judgment
+ * @brief 노드 인근 감속 적용을 위한 함수
+ * @param init_dist
+ * @param remaining_dist
+ * @param car_speed
+ */
+void CarBehavior::determine_brake_pressure(double init_dist, double remaining_dist, double car_speed,rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break) {
+    if(init_dist*0.4>remaining_dist) {
+        route_msgs::msg::DriveBreak drive_break;
+        double break_pressure = car_speed*3.6 - std::sqrt(remaining_dist);
+        //break_pressure = ((ros_parameter_->max_speed_)*3.6-1) - break_pressure;
+        if (break_pressure < 0) {
+            break_pressure = 0;
+        }
+        drive_break.break_pressure = static_cast<int>(break_pressure);
+#if DEBUG_MODE == 1
+        RCUTILS_LOG_INFO_NAMED("[CarHehavior]", "[determine_brake_pressure]-brake %d", drive_break.break_pressure);
+#endif
+        pub_break->publish(drive_break);
+    }
+}
+
+void CarBehavior::cmd_slowly_stop(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd, rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_brake) {
+    route_msgs::msg::DriveBreak temp_break;
+    temp_break.break_pressure=SLOW_STOP_NUM;
+    pub_brake->publish(temp_break);
+    geometry_msgs::msg::Twist stop_twist;
+    stop_twist.linear.x=0;
+    stop_twist.linear.y=0;
+    stop_twist.angular.z=0;
+    pub_cmd->publish(stop_twist);
+    // prev_speed_=0;
 }

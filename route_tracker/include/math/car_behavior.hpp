@@ -6,6 +6,9 @@
 #define ROUTE_TRACKER_CAR_BEHAVIOR_HPP
 #include "geometry_msgs/msg/twist.hpp"
 #include "code/kec_car_data.hpp"
+#include "route_msgs/msg/drive_break.hpp"
+#include "rclcpp/rclcpp.hpp"
+
 enum class quadrant{
         kFirst,
         kSecond,
@@ -26,6 +29,8 @@ public:
     bool waiting_judgment(kec_car::NodeKind start_kind);
     double calculate_angle_difference(double current_angle, double exit_angle);
     int determine_direction(double base_angle, double target_angle);
+    void determine_brake_pressure(double init_dist, double remaining_dist, double car_speed,rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break);
+    void cmd_slowly_stop(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd, rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_brake);
 };
 
 
