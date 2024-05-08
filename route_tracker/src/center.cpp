@@ -1051,6 +1051,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test %lf - %lf", temp_goal,goal_distance-car_->get_odom_location() );
 #endif
+/*
         if(temp_goal*0.4>goal_distance-car_->get_odom_location()){
             route_msgs::msg::DriveBreak drive_break;
             //double break_pressure= 100-std::sqrt(goal_distance)*10;
@@ -1069,6 +1070,11 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #endif
             pub_break_->publish(drive_break);
         }
+*/
+
+        CarBehavior car_behavior ; 
+        car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),ros_parameter_->max_speed_,pub_break_);
+
         double acceleration= acc_apply_speed();
         if (car_->get_direction() == kec_car::Direction::kBackward) {
             acceleration = -acceleration;
