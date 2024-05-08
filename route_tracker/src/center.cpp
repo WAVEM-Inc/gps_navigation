@@ -976,6 +976,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #endif
                 calculate_straight_movement(speed);
                 //
+                /*
                 if(init_distance*0.4>goal_distance){
                     route_msgs::msg::DriveBreak drive_break;
                     //double break_pressure= 100-std::sqrt(goal_distance)*10;
@@ -997,6 +998,11 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #endif
                     pub_break_->publish(drive_break);
                 }
+                */
+                #if DEBUG_MODE == 1
+                    RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake");
+                #endif
+                car_behavior.determine_brake_pressure(init_distance,goal_distance,ros_parameter_->max_speed_,pub_break_);
                 //1
 
             } // 2-6-2)
