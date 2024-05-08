@@ -4,7 +4,7 @@
 
 #include "car_behavior.hpp"
 #include <cmath>
-
+#include "math/distance.hpp"
 #include "common/test.h"
 #include "rcutils/logging_macros.h"
 #define SLOW_STOP_NUM 4
@@ -192,12 +192,12 @@ int CarBehavior::determine_direction(double base_angle, double target_angle) {
 
 /**
  * @brief Function to determine and publish brake pressure judgment
- * @brief 노드 인근 감속 적용을 위한 함수
+ * @brief 노드 인근 감속 적용을 위한 함수, 제동
  * @param init_dist
  * @param remaining_dist
  * @param car_speed
  */
-void CarBehavior::determine_brake_pressure(double init_dist, double remaining_dist, double car_speed,rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break) {
+void CarBehavior::determine_brake_pressure(double init_dist, double remaining_dist, double car_speed,const double max_speed, double* prev_brake_pressure,rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break) {
     if(init_dist*0.4>remaining_dist) {
         route_msgs::msg::DriveBreak drive_break;
         double break_pressure = car_speed*3.6 - std::sqrt(remaining_dist);
@@ -211,6 +211,23 @@ void CarBehavior::determine_brake_pressure(double init_dist, double remaining_di
 #endif
         pub_break->publish(drive_break);
     }
+    //
+#if DEBUG_MODE ==2
+    route_msgs::msg::DriveBreak drive_break;
+    Distance distance;
+    double braking_distance = distance.distance_braking_calculate(car_speed,0.8);
+    if(remaining_dist < braking_distance){
+        prev_brake_pressure+=0.1;
+    }
+    if(prev_brake_pressure >= (max_speed * 3.6)-1 ){
+        prev_brake_pressure = (max_speed*3.6)-1;
+    }
+    if (prev_brake_pressure < 0) {
+        prev_brake_pressure = 0;
+    }
+    drive_break.break_pressure = static_cast<int>(prev_brake_pressure);
+    pub_break->publish(drive_break);
+#endif
 }
 
 void CarBehavior::cmd_slowly_stop(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd, rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_brake) {

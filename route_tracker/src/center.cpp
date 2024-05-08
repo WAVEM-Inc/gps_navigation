@@ -362,7 +362,6 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     }
     else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
         odom_move(feedback, result, goal_handle);
-
     }
 
     // 7) 완료 처리
@@ -711,6 +710,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
     }
 
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+    double straight_brake_pressure=0;
     // 직진 주행을 위한 반복문
     while (rclcpp::ok()) {
         if (cancel_check(result, goal_handle)) {
@@ -773,7 +773,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         }*/
 
         // 노드 인근 감속
-        car_behavior.determine_brake_pressure(init_distance,goal_distance,ros_parameter_->max_speed_,pub_break_);
+        car_behavior.determine_brake_pressure(init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&straight_brake_pressure,pub_break_);
 
 
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
@@ -899,6 +899,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     double init_distance = center_distance->distance_from_perpendicular_line(
             task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
     car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+    double turn_brake_pressure=0.0;
     while (rclcpp::ok()) {
 
             if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
@@ -1002,7 +1003,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 #if DEBUG_MODE == 1
                     RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake");
                 #endif
-                car_behavior.determine_brake_pressure(init_distance,goal_distance,ros_parameter_->max_speed_,pub_break_);
+                car_behavior.determine_brake_pressure(init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&turn_brake_pressure,pub_break_);
                 //1
 
             } // 2-6-2)
@@ -1039,6 +1040,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     else{
         car_->set_drive_mode(kec_car::DrivingMode::kStraight);
     }*/
+    double odom_brake_pressure = 0.0;
     while (rclcpp::ok()) {
         if (cancel_check(result, goal_handle)) {
             return;
@@ -1073,7 +1075,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 */
 
         CarBehavior car_behavior ; 
-        car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),ros_parameter_->max_speed_,pub_break_);
+        car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
 
         double acceleration= acc_apply_speed();
         if (car_->get_direction() == kec_car::Direction::kBackward) {

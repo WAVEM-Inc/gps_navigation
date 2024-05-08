@@ -42,11 +42,11 @@ private:
         while (rclcpp::ok())
         {
             c = getchar();
-            if (c == 'j')
+            if (c == 'k')
             {
                 break_pressure_++;
             }
-            else if (c == 'k')
+            else if (c == 'j')
             {
                 if (break_pressure_ > 0)
                 {

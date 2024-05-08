@@ -14,7 +14,7 @@ public :
     Distance();
     double distance_haversine_calculate(GpsData first, GpsData second);
     double distance_from_perpendicular_line(GpsData start_node, GpsData end_node, GpsData cur_place);
-    double distance_braking_calculate(const double velocity, const double friction_coefficient, const double deceleration);
+    double distance_braking_calculate(const double velocity, const double friction_coefficient);
     double distance_gps_to_ktm(GpsData first, GpsData second);
     double calculate_line_angle(GpsData cur_place, GpsData end_node);
 private :

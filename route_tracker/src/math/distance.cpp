@@ -98,10 +98,16 @@ Distance::Distance() {}
 
 //제동거리=  ((V^2-V_0^2))/(2a제동효율)
 // braking_distance = (0*0-velocity*velocity)/2*deceleration*friction_coefficient
+/**
+ * 정지 거리
+ * @param velocity
+ * @param friction_coefficient
+ * @param deceleration
+ * @return
+ */
 double Distance::distance_braking_calculate(const double velocity,
-                                            const double friction_coefficient,
-                                            const double deceleration) {
-    return static_cast<double>((0*0-velocity*velocity)/2*deceleration*friction_coefficient);
+                                            const double friction_coefficient) {
+    return static_cast<double>((velocity*velocity)/2*friction_coefficient);
 }
 /**
  * @brief distance calculation by Korea TM
