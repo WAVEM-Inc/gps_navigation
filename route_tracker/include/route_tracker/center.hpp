@@ -110,7 +110,8 @@ private :
     void ros_parameter_setting();
     void ros_init();
     void cmd_stop();
-    float acc_apply_speed();
+    float speed_setting(float goal_dist, float brake_dist);
+    float speed_setting(const float goal_dist, const float init_dist, const float brake_dist);
     rclcpp_action::GoalResponse route_to_pose_goal_handle(
             const rclcpp_action::GoalUUID& uuid,
             std::shared_ptr<const RouteToPose::Goal> goal
@@ -136,7 +137,7 @@ private :
     void calculate_straight_movement(float acceleration);
     void start_on(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPoseGoalHandler> goal_handle);
     bool cancel_check(const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
-    void car_rotation(CarBehavior car_behavior,double node_heading, kec_car::NodeKind node_kind);
+    void car_rotation(CarBehavior car_behavior,double node_heading, kec_car::NodeKind node_kind, double init);
     void straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle ,CarBehavior car_behavior );
     void straight_move_correction(float acceleration);
     void odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);

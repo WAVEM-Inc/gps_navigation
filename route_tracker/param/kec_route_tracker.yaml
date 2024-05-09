@@ -9,7 +9,8 @@ route_tracker_node:
     rotation_straight_dist: 1.6
     rotation_angle_increase: 0.1
     rotation_angle_tolerance: 0.2 # 3-> 0.5
+    rotation_max_speed : 0.8
     recovery_goal_tolerance: 0.2
     deceleration: 9.8
-    friction_coefficient: 0.7
+    friction_coefficient: 0.4
     near_destination_dist: 1.8

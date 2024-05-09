@@ -396,7 +396,7 @@ void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
-#if DEBUG_MODE == 1
+#if DEBUG_MODE == 2
     std::cout << "[Center]-[gps_callback] : " <<
               "latitude : " << gps->latitude << '\n' <<
               "longitude : " << gps->longitude << std::endl;
@@ -423,6 +423,7 @@ void Center::ros_parameter_setting() {
     this->declare_parameter<float>("deceleration", SETTING_ZERO);
     this->declare_parameter<float>("friction_coefficient", SETTING_ZERO);
     this->declare_parameter<float>("near_destination_dist",SETTING_ZERO);
+    this->declare_parameter<float>("rotation_max_speed",SETTING_ZERO);
     float imu_correction;
     float max_speed;
     float driving_calibration_min_angle;
@@ -436,6 +437,7 @@ void Center::ros_parameter_setting() {
     float deceleration;
     float friction_coefficient;
     float near_destination_dist;
+    float rotation_max_speed;
     this->get_parameter("imu_correction", imu_correction);
     this->get_parameter("max_speed", max_speed);
     this->get_parameter("driving_calibration_min_angle", driving_calibration_min_angle);
@@ -449,6 +451,7 @@ void Center::ros_parameter_setting() {
     this->get_parameter("deceleration", deceleration);
     this->get_parameter("friction_coefficient", friction_coefficient);
     this->get_parameter("near_destination_dist",near_destination_dist);
+    this->get_parameter("rotation_max_speed",rotation_max_speed);
     ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                     max_speed,
                                                     driving_calibration_max_angle,
@@ -461,7 +464,8 @@ void Center::ros_parameter_setting() {
                                                     recovery_goal_tolerance,
                                                     deceleration,
                                                     friction_coefficient,
-                                                    near_destination_dist);
+                                                    near_destination_dist,
+                                                    rotation_max_speed);
 }
 
 
@@ -652,12 +656,15 @@ bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
     return false;
 }
 
-void Center::car_rotation(CarBehavior car_behavior, double node_heading, kec_car::NodeKind node_kind) {
+void Center::car_rotation(CarBehavior car_behavior, double node_heading, kec_car::NodeKind node_kind,double init) {
     double point_node_heading = node_heading;
     double car_heading = car_->get_degree();
     //float car_speed = car_->get_speed();
     float car_speed = 0.8;
-
+    // 두개가 몇도 차인가?
+    double degree = car_behavior.calculate_angle_difference(car_heading,node_heading);
+    // 기준점과 차이가 몇도 차인가?
+    car_speed = speed_setting(degree,init,15);
 
     if (car_behavior.car_move_direct(car_heading,
                                      point_node_heading) == -1) {
@@ -710,6 +717,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
     }
 
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
+    double braking_distance = center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
+
     double straight_brake_pressure=0;
     // 직진 주행을 위한 반복문
     while (rclcpp::ok()) {
@@ -727,6 +736,9 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         double goal_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
                                                                                  task_->get_next_gps(),
                                                                                  cur_location);
+
+        // 제동 거리 계산
+
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-distance %f, init_distance %f", goal_distance,
                     init_distance);
@@ -736,10 +748,11 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 #if DEBUG_MODE == 2
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
+/*
             route_msgs::msg::DriveBreak drive_break;
             drive_break.break_pressure = 100;
             pub_break_->publish(drive_break);
-/*            geometry_msgs::msg::Twist result_vel;
+          geometry_msgs::msg::Twist result_vel;
             result_vel.linear.x = 0;
             result_vel.angular.z = 0;
             pub_cmd_->publish(result_vel);*/
@@ -750,30 +763,9 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             break;
         }
- /*       if(init_distance*0.4>goal_distance){
-            route_msgs::msg::DriveBreak drive_break;
-            //double break_pressure= 100-std::sqrt(goal_distance)*10;
-            double break_pressure= std::sqrt(goal_distance);
-            if(break_pressure>car_->get_speed()){
-                break_pressure= std::fabs(car_->get_speed());
-            }
-            break_pressure = ((ros_parameter_->max_speed_)*3.6) - break_pressure;
-            if(break_pressure>car_->get_speed()){
-                break_pressure= std::fabs(car_->get_speed());
-            }
-            else if (break_pressure<0){
-                break_pressure=0;
-            }
-            drive_break.break_pressure = static_cast<int>(break_pressure);
-            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-brake %d", drive_break.break_pressure);
-#endif
-            pub_break_->publish(drive_break);
-        }*/
 
         // 노드 인근 감속
-        car_behavior.determine_brake_pressure(init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&straight_brake_pressure,pub_break_);
+        //car_behavior.determine_brake_pressure(init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&straight_brake_pressure,pub_break_);
 
 
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
@@ -848,12 +840,12 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                                 ros_parameter_->rotation_angle_tolerance_) == false) {
                             // 6-1-7) 휠제어
                             car_rotation(car_behavior,
-                                         goal_angle, task_->get_next_node_kind());
+                                         goal_angle,task_->get_next_node_kind(),init_distance);
                         }
                             // 6-1-6) 각도 변경 필요? N
                         else {
                             // 6-1-7) 직진
-                            float speed = acc_apply_speed();
+                            float speed = speed_setting(static_cast<float>(goal_distance) ,init_distance,static_cast<float>(braking_distance));
 #if DEBUG_MODE == 1
                             RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed %f",speed);
 #endif
@@ -876,7 +868,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             //직진 주행 추가
             //calculate_straight_movement(0.2);
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
-            float speed = acc_apply_speed();
+            float speed = speed_setting(static_cast<float>(goal_distance),init_distance,static_cast<float>(braking_distance));
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f",speed);
 #endif
@@ -896,10 +888,10 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     RCLCPP_INFO(this->get_logger(), "[turn_move mode] start");
 #endif
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
-    double init_distance = center_distance->distance_from_perpendicular_line(
+    double turn_straight_init_distance = center_distance->distance_from_perpendicular_line(
             task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
     car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
-    double turn_brake_pressure=0.0;
+    double braking_distance= center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
     while (rclcpp::ok()) {
 
             if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
@@ -914,12 +906,8 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(),
                         "[turn_move mode] - straight goal check goal_distance %f init %f rotation_straight_dist_ %f ",
-                        goal_distance, init_distance, ros_parameter_->rotation_straight_dist_);
+                        goal_distance, turn_straight_init_distance, ros_parameter_->rotation_straight_dist_);
 #endif
-            double rotaion_straight_dist = std::abs(init_distance - ros_parameter_->rotation_straight_dist_);
-            if (init_distance < ros_parameter_->rotation_straight_dist_) {
-                rotaion_straight_dist = rotaion_straight_dist * 2;
-            }
             // 2-6) 직진 목적지에 도착했는가?
 
             // 회전 중 틀어지지 않도록 task_->rotation.. 을 통해 목적지 판단 무시
@@ -931,6 +919,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode] Turn goal Success");
 #endif
+
                 task_->rotation_straight_check_ = true;
                 double next_node_heading = task_->get_next_heading();
                 double car_heading = car_->get_degree();
@@ -939,19 +928,8 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                         car_heading,
                         next_node_heading,
                         ros_parameter_->rotation_angle_tolerance_) == false) {
-                    car_rotation(car_behavior, next_node_heading, task_->get_next_node_kind());
+                    car_rotation(car_behavior, next_node_heading, task_->get_next_node_kind(),-1);
 
-                    //temp
-                    if(car_behavior.calculate_angle_difference(car_heading,next_node_heading)<5){
-                            route_msgs::msg::DriveBreak drive_break;
-
-                            drive_break.break_pressure =2;
-                            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
-#if DEBUG_MODE == 1
-                            RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake %d", drive_break.break_pressure);
-#endif
-                            pub_break_->publish(drive_break);
-                    }
                     //
                 } else {
                     // 2-9) 종료
@@ -960,7 +938,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                     turn_success.linear.x = 0;
                     turn_success.angular.z = 0;
                     pub_cmd_->publish(turn_success);*/
-                    cmd_stop();
+                    car_behavior.cmd_slowly_stop(pub_cmd_,pub_break_);
                     task_->rotation_straight_check_ = false;
                     break;
                 }
@@ -971,40 +949,19 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode]-[straight] start");
 #endif
 
-                float speed = acc_apply_speed();
+                float speed = speed_setting(static_cast<float>(goal_distance), turn_straight_init_distance, static_cast<float>(braking_distance));
+                prev_speed_ = speed;
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f",speed);
 #endif
                 calculate_straight_movement(speed);
                 //
-                /*
-                if(init_distance*0.4>goal_distance){
-                    route_msgs::msg::DriveBreak drive_break;
-                    //double break_pressure= 100-std::sqrt(goal_distance)*10;
-                    double break_pressure= std::sqrt(goal_distance);
-                    if(break_pressure>car_->get_speed()){
-                        break_pressure= std::fabs(car_->get_speed());
-                    }
-                    break_pressure = ((ros_parameter_->max_speed_)*3.6) - break_pressure;
-                    if(break_pressure>car_->get_speed()){
-                        break_pressure= std::fabs(car_->get_speed());
-                    }
-                    else if (break_pressure<0){
-                        break_pressure=0;
-                    }
-                    drive_break.break_pressure = static_cast<int>(break_pressure);
-                    //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
-#if DEBUG_MODE == 1
-                    RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake %d", drive_break.break_pressure);
-#endif
-                    pub_break_->publish(drive_break);
-                }
-                */
+
                 #if DEBUG_MODE == 1
                     RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]-brake");
                 #endif
-                car_behavior.determine_brake_pressure(init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&turn_brake_pressure,pub_break_);
-                //1
+                //car_behavior.determine_brake_pressure(turn_straight_init_distance,goal_distance,car_->get_speed(),ros_parameter_->max_speed_,&turn_brake_pressure,pub_break_);
+
 
             } // 2-6-2)
 
@@ -1033,7 +990,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
     RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
     double goal_distance =temp_goal+car_->get_odom_location();
-/*    double acceleration= acc_apply_speed();
+/*    double acceleration= speed_setting();
     if (car_->get_direction() == kec_car::Direction::kBackward) {
         acceleration = -acceleration;
     }
@@ -1041,10 +998,13 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         car_->set_drive_mode(kec_car::DrivingMode::kStraight);
     }*/
     double odom_brake_pressure = 0.0;
+    Distance distance;
+    double braking_distance= distance.distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
     while (rclcpp::ok()) {
         if (cancel_check(result, goal_handle)) {
             return;
         }
+
         if(goal_distance-car_->get_odom_location()<ros_parameter_->goal_distance_){
             cmd_stop();
             break;
@@ -1053,31 +1013,10 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test %lf - %lf", temp_goal,goal_distance-car_->get_odom_location() );
 #endif
-/*
-        if(temp_goal*0.4>goal_distance-car_->get_odom_location()){
-            route_msgs::msg::DriveBreak drive_break;
-            //double break_pressure= 100-std::sqrt(goal_distance)*10;
-            double break_pressure= std::sqrt(goal_distance-car_->get_odom_location());
-            if(break_pressure>car_->get_speed()){
-                break_pressure= car_->get_speed();
-            }
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test2 %lf - %lf - %lf", break_pressure,goal_distance-car_->get_odom_location(),car_->get_speed());
-#endif
-            break_pressure = ((ros_parameter_->max_speed_)*3.6-1.0) - break_pressure;
-            drive_break.break_pressure = static_cast<int>(break_pressure);
-            //drive_break.break_pressure = static_cast<int>(init_distance)-static_cast<int>(goal_distance);
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake %d", drive_break.break_pressure);
-#endif
-            pub_break_->publish(drive_break);
-        }
-*/
+        CarBehavior car_behavior ;
+        //car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
 
-        CarBehavior car_behavior ; 
-        car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
-
-        double acceleration= acc_apply_speed();
+        double acceleration= speed_setting(goal_distance-car_->get_odom_location(),temp_goal,braking_distance);
         if (car_->get_direction() == kec_car::Direction::kBackward) {
             acceleration = -acceleration;
         }
@@ -1147,14 +1086,75 @@ void Center::brake_unlock() {
     pub_break_->publish(temp_break);
 }
 
-float Center::acc_apply_speed() {
+float Center::speed_setting(float goal_dist, float brake_dist) {
     float cur_speed = 0;
-    if(prev_speed_>=ros_parameter_->max_speed_){
-        cur_speed = ros_parameter_->max_speed_;
+#if DEBUG_MODE == 1
+    RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal %lf - brake %lf , prev %f", goal_dist,brake_dist,prev_speed_ );
+#endif
+    if(goal_dist > brake_dist) {
+        if (prev_speed_ >= ros_parameter_->max_speed_) {
+            cur_speed = ros_parameter_->max_speed_;
+        } else {
+            cur_speed = prev_speed_;
+            prev_speed_ += 0.1;
+        }
     }
     else{
-        cur_speed = prev_speed_;
-        prev_speed_+=0.1;
+        if(prev_speed_ <= 0.20001){
+            prev_speed_ = 0.2;
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 > %f", prev_speed_ );
+#endif
+            return prev_speed_;
+        }
+        else {
+            prev_speed_ -= 0.005;
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 < %f", prev_speed_ );
+#endif
+            cur_speed = static_cast<float>(prev_speed_);
+        }
+    }
+    return cur_speed;
+}
+
+float Center::speed_setting(const float goal_dist, const float init_dist, const float brake_dist) {
+    float cur_speed = 0;
+    float max_speed = 0;
+
+#if DEBUG_MODE == 1
+    RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal %lf - brake %lf , prev %f, init %f", goal_dist,brake_dist,prev_speed_,init_dist );
+#endif
+    if(init_dist==-1){
+        max_speed = ros_parameter_->rotation_max_speed_;
+    }
+    else{
+        max_speed = ros_parameter_->max_speed_;
+    }
+    //== settting
+
+    if(init_dist < brake_dist && init_dist!=-1){
+        return 0.4;
+    }
+    if(goal_dist > brake_dist) {
+        if (prev_speed_ >= max_speed) {
+            cur_speed = max_speed;
+        } else {
+            prev_speed_ += 0.005;
+            cur_speed = prev_speed_;
+#if DEBUG_MODE == 1
+            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] temp, prev %f",cur_speed );
+#endif
+        }
+    }
+    else{
+        cur_speed = max_speed * goal_dist/brake_dist;
+        if(cur_speed <= 0.20001){
+            cur_speed = 0.2;
+        }
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal! %f", cur_speed );
+#endif
     }
     return cur_speed;
 }

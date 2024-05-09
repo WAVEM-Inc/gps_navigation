@@ -7,7 +7,7 @@
 #include "math/distance.hpp"
 #include "common/test.h"
 #include "rcutils/logging_macros.h"
-#define SLOW_STOP_NUM 4
+#define SLOW_STOP_NUM 2
 
 CarBehavior::CarBehavior() {
 
@@ -84,14 +84,14 @@ geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear,
 bool CarBehavior::car_rotation_judgment(double car_degree, double node_degree, double angle_tolerance) {
     double degree = 0;
     degree = calculate_angle_difference(car_degree, node_degree);
-    double diff = calculate_angle_difference(degree, angle_tolerance);
+  //  double diff = calculate_angle_difference(degree, angle_tolerance);
 #if DEBUG_MODE == 1
     RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR",
-                           "[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f diff %f result %d",
+                           "[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f result %d",
                            car_degree, node_degree,
-                           degree, angle_tolerance, diff,(diff < angle_tolerance) ? true : false);
+                           degree, angle_tolerance,(degree < angle_tolerance) ? true : false);
 #endif
-    return (diff < angle_tolerance) ? true : false;
+    return (degree < angle_tolerance) ? true : false;
 }
 
 bool CarBehavior::straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
