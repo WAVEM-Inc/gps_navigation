@@ -330,13 +330,15 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         } // 회전 주행
         else if (car_behavior.waiting_judgment(task_->get_cur_node_kind())) {
             // 대기
+            car_behavior.cmd_slowly_stop(pub_cmd_, pub_break_);
             while (rclcpp::ok()) {
                 // stop
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[waiting mode] start");
 #endif
                 if (waiting_check_ == false) {
-                    cmd_stop();
+                    car_behavior.cmd_slowly_stop(pub_cmd_, pub_break_);
+
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     // 교차로 정보 확인
                     car_->set_drive_mode(kec_car::DrivingMode::kStop);
@@ -424,6 +426,7 @@ void Center::ros_parameter_setting() {
     this->declare_parameter<float>("friction_coefficient", SETTING_ZERO);
     this->declare_parameter<float>("near_destination_dist",SETTING_ZERO);
     this->declare_parameter<float>("rotation_max_speed",SETTING_ZERO);
+    this->declare_parameter<float>("rotation_braking_arc",SETTING_ZERO);
     float imu_correction;
     float max_speed;
     float driving_calibration_min_angle;
@@ -438,6 +441,7 @@ void Center::ros_parameter_setting() {
     float friction_coefficient;
     float near_destination_dist;
     float rotation_max_speed;
+    float rotation_braking_arc;
     this->get_parameter("imu_correction", imu_correction);
     this->get_parameter("max_speed", max_speed);
     this->get_parameter("driving_calibration_min_angle", driving_calibration_min_angle);
@@ -452,6 +456,7 @@ void Center::ros_parameter_setting() {
     this->get_parameter("friction_coefficient", friction_coefficient);
     this->get_parameter("near_destination_dist",near_destination_dist);
     this->get_parameter("rotation_max_speed",rotation_max_speed);
+    this->get_parameter("rotation_braking_arc",rotation_braking_arc);
     ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                     max_speed,
                                                     driving_calibration_max_angle,
@@ -465,7 +470,8 @@ void Center::ros_parameter_setting() {
                                                     deceleration,
                                                     friction_coefficient,
                                                     near_destination_dist,
-                                                    rotation_max_speed);
+                                                    rotation_max_speed,
+                                                    rotation_braking_arc);
 }
 
 
@@ -527,7 +533,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
  * @param status
  */
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
-#if DEBUG_MODE == 1
+#if DEBUG_MODE == 2
     std::cout << "[Center]-[obstacle_status_callback] : " <<
               "obstacle_value : " << status->obstacle_value << '\n' <<
               "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;
@@ -664,7 +670,7 @@ void Center::car_rotation(CarBehavior car_behavior, double node_heading, kec_car
     // 두개가 몇도 차인가?
     double degree = car_behavior.calculate_angle_difference(car_heading,node_heading);
     // 기준점과 차이가 몇도 차인가?
-    car_speed = speed_setting(degree,init,15);
+    car_speed = speed_setting(degree,init,ros_parameter_->rotation_braking_arc_);
 
     if (car_behavior.car_move_direct(car_heading,
                                      point_node_heading) == -1) {
@@ -846,6 +852,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                         else {
                             // 6-1-7) 직진
                             float speed = speed_setting(static_cast<float>(goal_distance) ,init_distance,static_cast<float>(braking_distance));
+                            prev_speed_ = speed;
 #if DEBUG_MODE == 1
                             RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed %f",speed);
 #endif
@@ -869,6 +876,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             //calculate_straight_movement(0.2);
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
             float speed = speed_setting(static_cast<float>(goal_distance),init_distance,static_cast<float>(braking_distance));
+            prev_speed_= speed;
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f",speed);
 #endif
@@ -984,8 +992,6 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                        const std::shared_ptr<RouteToPoseGoalHandler> goal_handle) {
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
 
-    cmd_stop();
-
     // goal distance setting
     double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
     RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
@@ -1006,7 +1012,8 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         }
 
         if(goal_distance-car_->get_odom_location()<ros_parameter_->goal_distance_){
-            cmd_stop();
+            CarBehavior car_behavior;
+            car_behavior.cmd_slowly_stop(pub_cmd_, pub_break_);
             break;
         }
         // 240502
@@ -1017,6 +1024,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         //car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
 
         double acceleration= speed_setting(goal_distance-car_->get_odom_location(),temp_goal,braking_distance);
+        prev_speed_ = acceleration;
         if (car_->get_direction() == kec_car::Direction::kBackward) {
             acceleration = -acceleration;
         }
