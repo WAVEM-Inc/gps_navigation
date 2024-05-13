@@ -839,6 +839,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                         RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal_angle : %lf ",
                                     goal_angle);
 #endif
+/*
                         // 6-1-6) 각도 변경 필요? Y
                         if (car_behavior.car_rotation_judgment(
                                 car_->get_degree(),
@@ -848,8 +849,11 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                             car_rotation(car_behavior,
                                          goal_angle,task_->get_next_node_kind(),init_distance);
                         }
-                            // 6-1-6) 각도 변경 필요? N
-                        else {
+else{ // 6-1-6) 각도 변경 필요? N
+
+}
+                        */
+             
                             // 6-1-7) 직진
                             float speed = speed_setting(static_cast<float>(goal_distance) ,init_distance,static_cast<float>(braking_distance));
                             prev_speed_ = speed;
@@ -858,7 +862,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 #endif
                             calculate_straight_movement(
                                     speed);
-                        }
+                        
                     }// 6-1-5) 복귀 목적지 도착 여부 N
                     else {
 #if DEBUG_MODE == 1
