@@ -506,7 +506,7 @@ void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
 }
 
 void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
-#if DEBUG_MODE == 1
+#if DEBUG_MODE == 2
     RCLCPP_INFO(this->get_logger(),"[Center]-[route_deviation_callback] offcource_status : %d lat %f log %f, %d distance : %f"
     , status->offcource_status ,status->offcource_goal_lat,status->offcource_goal_lon, car_->get_drive_mode(), status->offcource_goal_distance);
 #endif

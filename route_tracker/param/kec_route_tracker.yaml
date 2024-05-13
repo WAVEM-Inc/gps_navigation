@@ -5,7 +5,7 @@ route_tracker_node:
     driving_calibration_min_angle: 1.0
     driving_calibration_max_angle: 30.0
     driving_calibration_angle_increase: 10.0
-    goal_distance: 0.5
+    goal_distance: 0.3 # cm
     rotation_straight_dist: 1.6
     rotation_angle_increase: 0.1
     rotation_angle_tolerance: 0.2 # 3-> 0.5
@@ -14,4 +14,4 @@ route_tracker_node:
     deceleration: 9.8
     friction_coefficient: 0.4 # 마찰계수
     near_destination_dist: 1.8 
-    rotation_braking_arc : 15.0 # 회전 중 도착지로부터 감속 범위
+    rotation_braking_arc : 10.0 # 회전 중 도착지로부터 감속 범위
