@@ -23,7 +23,8 @@ public:
                           float friction_coefficient,
                           float near_destination_dist,
                           float rotation_max_speed,
-                          float rotation_braking_arc
+                          float rotation_braking_arc,
+                          float start_acc
     )
             : imu_correction_(imu_correction),
               max_speed_(max_speed),
@@ -39,7 +40,8 @@ public:
               friction_coefficient_(friction_coefficient),
               near_destination_dist_(near_destination_dist),
               rotation_max_speed_(rotation_max_speed),
-              rotation_braking_arc_(rotation_braking_arc){
+              rotation_braking_arc_(rotation_braking_arc),
+              start_acc_(start_acc){
 #if DEBUG_MODE == 1
             std::cout << "imu_correction_ : " << imu_correction << '\n' <<
                       "max_speed_ : " << max_speed << '\n' <<
@@ -55,7 +57,8 @@ public:
                       "friction_coefficient_ : " << friction_coefficient <<'\n'<<
                       "near_destination_dist_ : "<<near_destination_dist<<'\n' <<
                       "rotation_max_speed : "<<rotation_max_speed<<'\n'<<
-                      "rotation_braking_arc : "<<rotation_braking_arc<<std::endl;
+                      "rotation_braking_arc : "<<rotation_braking_arc<<'\n'<<
+                      "start_acc : " << start_acc<<std::endl;
 #endif
     }
 
@@ -75,6 +78,7 @@ public :
     float near_destination_dist_;
     float rotation_max_speed_;
     float rotation_braking_arc_;
+    float start_acc_;
 };
 
 

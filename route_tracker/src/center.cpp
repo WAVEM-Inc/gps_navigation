@@ -206,10 +206,21 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
                 goal->end_node.node_id.c_str(), goal->end_node.kind.c_str(), goal->end_node.driving_option.c_str(),
                 goal->end_node.direction.c_str(), goal->end_node.position.latitude, goal->end_node.position.longitude);
 #endif
+    cancel_check_= false;
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
     DataTypeTrans trans;
     car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
+    // goal->start_node 변경
+    // node 직접 계산
+    /*
+    Distance distance;
+    GpsData start(goal->start_node.position.latitude,goal->start_node.position.longitude);
+    GpsData end(goal->end_node.position.latitude,goal->end_node.position.longitude);
+    goal->start_node.heading = distance.calculate_line_angle(start,end);
+
+    */
+    //
     task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
     task_->bypass_cur_node_ = goal->start_node;
     task_->bypass_next_node_ = goal->end_node;
@@ -256,6 +267,7 @@ Center::route_to_pose_cancel_handle(const std::shared_ptr<RouteToPoseGoalHandler
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
     std::cout << "[Time] " << std::ctime(&now_c) << "[Center]-[route_to_pose_cancel_handle] Cancel" << std::endl;
 #endif
+(void)goal_handle;
     return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -332,6 +344,9 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
             // 대기
             car_behavior.cmd_slowly_stop(pub_cmd_, pub_break_);
             while (rclcpp::ok()) {
+                    if (cancel_check(result, goal_handle)) {
+                        return;
+                    }
                 // stop
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[waiting mode] start");
@@ -368,6 +383,11 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 
     // 7) 완료 처리
     if (rclcpp::ok()) {
+        if(cancel_check_){
+            cmd_stop();
+            return;
+        }
+        else{
         result->result = static_cast<int>(kec_driving_code::Result::kSuccess);
         car_->set_drive_mode(kec_car::DrivingMode::kArrive);
         {
@@ -378,6 +398,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         feedback_check_ = false;
         waiting_check_ = false;
         RCLCPP_INFO(this->get_logger(), "Goal successed");
+        }
     }
 }
 
@@ -427,6 +448,7 @@ void Center::ros_parameter_setting() {
     this->declare_parameter<float>("near_destination_dist",SETTING_ZERO);
     this->declare_parameter<float>("rotation_max_speed",SETTING_ZERO);
     this->declare_parameter<float>("rotation_braking_arc",SETTING_ZERO);
+    this->declare_parameter<float>("start_acc",SETTING_ZERO);
     float imu_correction;
     float max_speed;
     float driving_calibration_min_angle;
@@ -442,6 +464,7 @@ void Center::ros_parameter_setting() {
     float near_destination_dist;
     float rotation_max_speed;
     float rotation_braking_arc;
+    float start_acc;
     this->get_parameter("imu_correction", imu_correction);
     this->get_parameter("max_speed", max_speed);
     this->get_parameter("driving_calibration_min_angle", driving_calibration_min_angle);
@@ -457,6 +480,7 @@ void Center::ros_parameter_setting() {
     this->get_parameter("near_destination_dist",near_destination_dist);
     this->get_parameter("rotation_max_speed",rotation_max_speed);
     this->get_parameter("rotation_braking_arc",rotation_braking_arc);
+    this->get_parameter("start_acc",start_acc);
     ros_parameter_ = std::make_unique<RosParameter>(imu_correction,
                                                     max_speed,
                                                     driving_calibration_max_angle,
@@ -471,7 +495,8 @@ void Center::ros_parameter_setting() {
                                                     friction_coefficient,
                                                     near_destination_dist,
                                                     rotation_max_speed,
-                                                    rotation_braking_arc);
+                                                    rotation_braking_arc,
+                                                    start_acc);
 }
 
 
@@ -657,6 +682,7 @@ bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
         result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
         goal_handle->canceled(result);
         RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        cancel_check_ = true;
         return true;
     }
     return false;
@@ -855,7 +881,8 @@ else{ // 6-1-6) 각도 변경 필요? N
                         */
              
                             // 6-1-7) 직진
-                            float speed = speed_setting(static_cast<float>(goal_distance) ,init_distance,static_cast<float>(braking_distance));
+                            //float speed = speed_setting(static_cast<float>(goal_distance) ,init_distance,static_cast<float>(braking_distance));
+                            float speed = speed_setting(static_cast<float>(recovery_goal_distance) ,init_distance,static_cast<float>(braking_distance));
                             prev_speed_ = speed;
 #if DEBUG_MODE == 1
                             RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed %f",speed);
@@ -869,6 +896,7 @@ else{ // 6-1-6) 각도 변경 필요? N
                         RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode] goal successed");
 #endif
                         car_->set_drive_mode(kec_car::DrivingMode::kStop);
+                        car_behavior.cmd_slowly_stop(pub_cmd_,pub_break_);
                         break;
                     }// 6-1-5) 복귀 목적지 도착 여부 Y
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -905,7 +933,9 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
     double braking_distance= center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
     while (rclcpp::ok()) {
-
+            if (cancel_check(result, goal_handle)) {
+                return;
+            }
             if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
                 car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
             }
@@ -961,7 +991,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode]-[straight] start");
 #endif
 
-                float speed = speed_setting(static_cast<float>(goal_distance), turn_straight_init_distance, static_cast<float>(braking_distance));
+                float speed = speed_setting(static_cast<float>(goal_distance), turn_straight_init_distance, static_cast<float>(braking_distance)+1);
                 prev_speed_ = speed;
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f",speed);
@@ -1145,14 +1175,14 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
     }
     //== settting
 
-    if(init_dist < brake_dist && init_dist!=-1){
+    if(init_dist <= brake_dist && init_dist!=-1){
         return 0.4;
     }
     if(goal_dist > brake_dist) {
         if (prev_speed_ >= max_speed) {
             cur_speed = max_speed;
         } else {
-            prev_speed_ += 0.005;
+            prev_speed_ += ros_parameter_->start_acc_;
             cur_speed = prev_speed_;
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] temp, prev %f",cur_speed );
@@ -1160,12 +1190,15 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
         }
     }
     else{
+        if(std::fabs(car_->get_speed()) < max_speed/3.6){
+            max_speed = std::fabs(car_->get_speed()/3.6);
+        }
         cur_speed = max_speed * goal_dist/brake_dist;
         if(cur_speed <= 0.20001){
             cur_speed = 0.2;
         }
 #if DEBUG_MODE == 1
-        RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal! %f", cur_speed );
+        RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal! %f cur_car %f", cur_speed,car_->get_speed() );
 #endif
     }
     return cur_speed;

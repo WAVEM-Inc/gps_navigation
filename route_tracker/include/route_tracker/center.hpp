@@ -47,6 +47,7 @@ public :
 
 private :
     double init_distance ;
+    bool cancel_check_;
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
