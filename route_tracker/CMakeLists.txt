@@ -19,10 +19,6 @@ find_package(obstacle_msgs REQUIRED)
 find_package(robot_status_msgs REQUIRED)
 find_package(can_msgs REQUIRED)
 
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
-find_package(GeographicLib REQUIRED)
-include_directories(${GeographicLib_INCLUDE_DIRS})
-
 include_directories(
         include
         include/${PROJECT_NAME}
