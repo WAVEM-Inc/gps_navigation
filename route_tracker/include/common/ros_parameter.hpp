@@ -20,7 +20,11 @@ public:
                           float rotation_angle_tolerance,
                           float recovery_goal_tolerance,
                           float deceleration,
-                          float friction_coefficient
+                          float friction_coefficient,
+                          float near_destination_dist,
+                          float rotation_max_speed,
+                          float rotation_braking_arc,
+                          float start_acc
     )
             : imu_correction_(imu_correction),
               max_speed_(max_speed),
@@ -33,7 +37,11 @@ public:
               rotation_angle_tolerance_(rotation_angle_tolerance),
               recovery_goal_tolerance_(recovery_goal_tolerance),
               deceleration_(deceleration),
-              friction_coefficient_(friction_coefficient) {
+              friction_coefficient_(friction_coefficient),
+              near_destination_dist_(near_destination_dist),
+              rotation_max_speed_(rotation_max_speed),
+              rotation_braking_arc_(rotation_braking_arc),
+              start_acc_(start_acc){
 #if DEBUG_MODE == 1
             std::cout << "imu_correction_ : " << imu_correction << '\n' <<
                       "max_speed_ : " << max_speed << '\n' <<
@@ -46,7 +54,11 @@ public:
                       "rotation_angle_tolerance_ : " << rotation_angle_tolerance << '\n' <<
                       "recovery_goal_tolerance_ : " << recovery_goal_tolerance << '\n' <<
                       "deceleration_ : " << deceleration << '\n' <<
-                      "friction_coefficient_ : " << friction_coefficient << '\n' << std::endl;
+                      "friction_coefficient_ : " << friction_coefficient <<'\n'<<
+                      "near_destination_dist_ : "<<near_destination_dist<<'\n' <<
+                      "rotation_max_speed : "<<rotation_max_speed<<'\n'<<
+                      "rotation_braking_arc : "<<rotation_braking_arc<<'\n'<<
+                      "start_acc : " << start_acc<<std::endl;
 #endif
     }
 
@@ -63,6 +75,10 @@ public :
     float recovery_goal_tolerance_;
     float deceleration_;
     float friction_coefficient_;
+    float near_destination_dist_;
+    float rotation_max_speed_;
+    float rotation_braking_arc_;
+    float start_acc_;
 };
 
 

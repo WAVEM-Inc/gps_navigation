@@ -98,10 +98,16 @@ Distance::Distance() {}
 
 //제동거리=  ((V^2-V_0^2))/(2a제동효율)
 // braking_distance = (0*0-velocity*velocity)/2*deceleration*friction_coefficient
+/**
+ * 정지 거리
+ * @param velocity
+ * @param friction_coefficient
+ * @param deceleration
+ * @return
+ */
 double Distance::distance_braking_calculate(const double velocity,
-                                            const double friction_coefficient,
-                                            const double deceleration) {
-    return static_cast<double>((0*0-velocity*velocity)/2*deceleration*friction_coefficient);
+                                            const double friction_coefficient) {
+    return static_cast<double>((velocity*velocity)/2*friction_coefficient);
 }
 /**
  * @brief distance calculation by Korea TM
@@ -119,10 +125,25 @@ double Distance::distance_gps_to_ktm(GpsData first, GpsData second) {
 
 void Distance::convert_gps_to_ktm(GpsData& original) {
     GeoPoint in_pt;
-    in_pt.x = original.fn_get_latitude();
-    in_pt.y= original.fn_get_longitude();
-    in_pt=geo_trans_.convert(geo_trans_.TM,geo_trans_.GEO,in_pt);
+    in_pt.y = original.fn_get_latitude();
+    in_pt.x= original.fn_get_longitude();
+    in_pt=geo_trans_.convert(geo_trans_.GEO,geo_trans_.TM,in_pt);
     original.fn_set_latitude(in_pt.x);
     original.fn_set_longitude(in_pt.y);
     //return GpsData();
+}
+
+double Distance::calculate_line_angle(GpsData cur_place, GpsData end_node) {
+    convert_gps_to_ktm(cur_place);
+    convert_gps_to_ktm(end_node);
+    double delta_x = end_node.fn_get_latitude() - cur_place.fn_get_latitude();
+    double delta_y = end_node.fn_get_longitude() - cur_place.fn_get_longitude();
+    double angle_rad = atan2(delta_y, delta_x);
+    double angle_deg = radian_to_degree(angle_rad) - 90;
+    angle_deg = fmod(angle_deg + 360.0, 360.0);
+    return angle_deg;
+}
+
+double Distance::radian_to_degree(const double radian) {
+    return radian * (180.0 / M_PI);;
 }

@@ -4,6 +4,11 @@
 
 #include "car_behavior.hpp"
 #include <cmath>
+#include "math/distance.hpp"
+#include "common/test.h"
+#include "rcutils/logging_macros.h"
+#define SLOW_STOP_NUM 2
+
 CarBehavior::CarBehavior() {
 
 }
@@ -12,53 +17,62 @@ CarBehavior::CarBehavior() {
  *
  * @param car_degree
  * @param next_node_degree
- * @return bool false : left , true : right
+ * @return  1 : left , -1 : right 0 = same
  */
-bool CarBehavior::car_move_direct(double car_degree, double next_node_degree) {
-        double angle_difference = next_node_degree - car_degree;
-        // 각도차를 -180 ~ 180 범위 내로 정규화
-        angle_difference = std::fmod(angle_difference, 360);
-        if (angle_difference > 180) {
-                angle_difference -= 360;
-        }
-        else if (angle_difference < -180) {
-                angle_difference += 360;
-        }
-        // If angle_difference is positive, car should turn right (true)
-        // If angle_difference is negative, car should turn left (false)
-        return angle_difference < 0;
+int CarBehavior::car_move_direct(double car_degree, double next_node_degree) {
+    double angle_difference = next_node_degree - car_degree;
+    // 각도차를 -180 ~ 180 범위 내로 정규화
+    angle_difference = std::fmod(angle_difference, 360);
+    if (angle_difference > 180) {
+        angle_difference -= 360;
+    }
+    else if (angle_difference < -180) {
+        angle_difference += 360;
+    }
+    // If angle_difference is positive, car should turn right (true)
+    // If angle_difference is negative, car should turn left (false)
+    if(angle_difference < 0){
+        return -1;
+    }
+    else if(angle_difference > 0){
+        return 1;
+    }
+    else{
+        return 0;
+    }
 }
+
 /**
  *
  * @param angle
  * @return
  */
 quadrant CarBehavior::find_angle_quadrant(double angle) {
-        angle = fmod(angle, 360);
-        if (angle < 0) {
-                angle += 360;
-        }
-        // 사분면 결정 로직
-        if (angle > 0 && angle <= 90) {
-                return quadrant::kFirst;
-        } else if (angle > 90 && angle <= 180) {
-                return quadrant::kSecond;
-        } else if (angle > 180 && angle <= 270) {
-                return quadrant::kThird;
-        } else {
-                return quadrant::kFourth; // 270 < angle <= 360
-        }
+    angle = fmod(angle, 360);
+    if (angle < 0) {
+        angle += 360;
+    }
+    // 사분면 결정 로직
+    if (angle > 0 && angle <= 90) {
+        return quadrant::kFirst;
+    } else if (angle > 90 && angle <= 180) {
+        return quadrant::kSecond;
+    } else if (angle > 180 && angle <= 270) {
+        return quadrant::kThird;
+    } else {
+        return quadrant::kFourth; // 270 < angle <= 360
+    }
 }
 
-geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear,float angle) {
-        geometry_msgs::msg::Twist twist;
-        twist.linear.x=linear;
-        twist.linear.y = 0.0;
-        twist.linear.z = 0.0;
-        twist.angular.x = 0.0;
-        twist.angular.y = 0.0;
-        twist.angular.z = angle;
-        return twist;
+geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear, float angle) {
+    geometry_msgs::msg::Twist twist;
+    twist.linear.x = linear;
+    twist.linear.y = 0.0;
+    twist.linear.z = 0.0;
+    twist.angular.x = 0.0;
+    twist.angular.y = 0.0;
+    twist.angular.z = angle;
+    return twist;
 }
 
 /**
@@ -67,31 +81,163 @@ geometry_msgs::msg::Twist CarBehavior::calculate_rotation_movement(float linear,
  * @param angle_tolerance
  * @return bool true : 회전 완료, false : 회전 필요
  */
-bool CarBehavior::car_rotation_judgment(double degree, double angle_tolerance) {
-        return degree < angle_tolerance;
+bool CarBehavior::car_rotation_judgment(double car_degree, double node_degree, double angle_tolerance) {
+    double degree = 0;
+    degree = calculate_angle_difference(car_degree, node_degree);
+  //  double diff = calculate_angle_difference(degree, angle_tolerance);
+#if DEBUG_MODE == 1
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR",
+                           "[car_rotation_judgment] car_degree %f node_degree %f degree %f tolerance %f result %d",
+                           car_degree, node_degree,
+                           degree, angle_tolerance,(degree < angle_tolerance) ? true : false);
+#endif
+    return (degree < angle_tolerance) ? true : false;
 }
 
 bool CarBehavior::straight_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
-        // 목적지가 회전이거나 출발지가 대기인 경우 false
-        if(end_kind==kec_car::NodeKind::kIntersection || start_kind == kec_car::NodeKind::kWaiting){
-                return false;
-        }
-        else{
-                return true;
-        }
+    // 목적지가 회전이거나 출발지가 대기인 경우 false
+    if (end_kind == kec_car::NodeKind::kIntersection || start_kind == kec_car::NodeKind::kWaiting) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 bool CarBehavior::intersection_judgment(kec_car::NodeKind start_kind, kec_car::NodeKind end_kind) {
-        if (end_kind==kec_car::NodeKind::kIntersection){
-                return true;
-        } else {
-                return false;
-        }
+    if (end_kind == kec_car::NodeKind::kIntersection) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool CarBehavior::waiting_judgment(kec_car::NodeKind start_kind) {
-        if(start_kind == kec_car::NodeKind::kWaiting){
-                return true;
+    if (start_kind == kec_car::NodeKind::kWaiting) {
+        return true;
+    }
+    return false;
+}
+
+double CarBehavior::normalize_angle(double angle) {
+    // angle을 0부터 360도 사이의 값으로 변환
+    angle = fmod(angle, 360.0);
+    if (angle < 0) {
+        angle += 360.0;
+    }
+    return angle;
+}
+
+double CarBehavior::calculate_angle_difference(double current_angle, double exit_angle) {
+/*    // 각도를 0부터 360도 사이의 값으로 정규화
+    current_angle = normalizeAngle(current_angle);
+    exit_angle = normalizeAngle(exit_angle);
+
+    // 각도 차이 계산
+    double angleDifference = exit_angle - current_angle;
+
+    // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
+    angleDifference = normalize_angle(angleDifference);
+#if DEBUG_MODE ==1
+    RCUTILS_LOG_INFO_NAMED("CAR_BEHAVIOR","[calculate_angle_difference] current_angle %f exit_angle %f angleDifference %f", current_angle , exit_angle,
+                           angleDifference);
+#endif
+    if (angleDifference > 180.0) {
+        angleDifference = 360.0 - angleDifference;
+    }
+    return angleDifference;*/
+    current_angle = normalize_angle(current_angle);
+    exit_angle = normalize_angle(exit_angle);
+
+    // 각도 차이 계산
+    double angleDifference = exit_angle - current_angle;
+
+    // 음수 각도를 처리하여 0부터 360도 사이의 값으로 변환
+    angleDifference = normalize_angle(angleDifference);
+
+    // 180도를 넘어서면 반대 방향으로 계산
+    if (angleDifference > 180.0) {
+        angleDifference = 360.0 - angleDifference;
+    }
+
+    return angleDifference;
+}
+
+int CarBehavior::determine_direction(double base_angle, double target_angle) {
+    // 각도의 범위를 0도에서 360도로 정규화
+    base_angle = std::fmod(base_angle, 360.0);
+    target_angle = std::fmod(target_angle, 360.0);
+
+    // 각도 차이 계산
+    double angle_difference = target_angle - base_angle;
+
+    // 각도 차이를 -180도에서 180도 범위로 정규화
+    if (angle_difference > 180.0) {
+        angle_difference -= 360.0;
+    }
+    else if (angle_difference < -180.0) {
+        angle_difference += 360.0;
+    }
+
+    // 각도 차이가 음수인지 양수인지를 판별하여 왼쪽 또는 오른쪽 방향을 결정
+    if (angle_difference < 0) {
+        return 1;  // 기준 각도의 왼쪽에 위치
+    }
+    else if(angle_difference>0) {
+        return -1; // 기준 각도의 오른쪽에 위치
+    }
+    else{
+        return 0;
+    }
+}
+
+/**
+ * @brief Function to determine and publish brake pressure judgment
+ * @brief 노드 인근 감속 적용을 위한 함수, 제동
+ * @param init_dist
+ * @param remaining_dist
+ * @param car_speed
+ */
+void CarBehavior::determine_brake_pressure(double init_dist, double remaining_dist, double car_speed,const double max_speed, double* prev_brake_pressure,rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_break) {
+    if(init_dist*0.4>remaining_dist) {
+        route_msgs::msg::DriveBreak drive_break;
+        double break_pressure = car_speed*3.6 - std::sqrt(remaining_dist);
+        //break_pressure = ((ros_parameter_->max_speed_)*3.6-1) - break_pressure;
+        if (break_pressure < 0) {
+            break_pressure = 0;
         }
-        return false;
+        drive_break.break_pressure = static_cast<int>(break_pressure);
+#if DEBUG_MODE == 1
+        RCUTILS_LOG_INFO_NAMED("[CarHehavior]", "[determine_brake_pressure]-brake %d", drive_break.break_pressure);
+#endif
+        pub_break->publish(drive_break);
+    }
+    //
+#if DEBUG_MODE ==2
+    route_msgs::msg::DriveBreak drive_break;
+    Distance distance;
+    double braking_distance = distance.distance_braking_calculate(car_speed,0.8);
+    if(remaining_dist < braking_distance){
+        prev_brake_pressure+=0.1;
+    }
+    if(prev_brake_pressure >= (max_speed * 3.6)-1 ){
+        prev_brake_pressure = (max_speed*3.6)-1;
+    }
+    if (prev_brake_pressure < 0) {
+        prev_brake_pressure = 0;
+    }
+    drive_break.break_pressure = static_cast<int>(prev_brake_pressure);
+    pub_break->publish(drive_break);
+#endif
+}
+
+void CarBehavior::cmd_slowly_stop(rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd, rclcpp::Publisher<route_msgs::msg::DriveBreak>::SharedPtr pub_brake) {
+    route_msgs::msg::DriveBreak temp_break;
+    temp_break.break_pressure=SLOW_STOP_NUM;
+    pub_brake->publish(temp_break);
+    geometry_msgs::msg::Twist stop_twist;
+    stop_twist.linear.x=0;
+    stop_twist.linear.y=0;
+    stop_twist.angular.z=0;
+    pub_cmd->publish(stop_twist);
+    // prev_speed_=0;
 }

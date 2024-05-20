@@ -17,6 +17,7 @@ find_package(nav_msgs REQUIRED)
 find_package(routedevation_msgs REQUIRED)
 find_package(obstacle_msgs REQUIRED)
 find_package(robot_status_msgs REQUIRED)
+find_package(can_msgs REQUIRED)
 
 include_directories(
         include
@@ -40,6 +41,7 @@ set(dependencies
         routedevation_msgs
         obstacle_msgs
         robot_status_msgs
+        can_msgs
 )
 
 set(source_list

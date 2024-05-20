@@ -5,16 +5,19 @@
 #ifndef ROUTE_TRACKER_CONSTANTS_HPP
 #define ROUTE_TRACKER_CONSTANTS_HPP
 
-#define TP_NAME_ROUTE_TO_POSE "/drive/route_to_pose"
+#define TP_NAME_ROUTE_TO_POSE "/route_to_pose"
 #define TP_NAME_IMU "/sensor/imu/data"
 #define TP_NAME_GPS "/sensor/ublox/fix"
 #define TP_NAME_CMD_VEL "/cmd_vel"
-#define TP_NAME_ODOM "/odom"
+#define TP_NAME_ODOM "/drive/odom/origin"
+#define TP_NAME_ODOM_EULAR "/drive/odom/eular"
 #define TP_NAME_ROUTE_DEVIATION "/drive/route_deviation/status"
 #define TP_NAME_OBSTACLE_STATUS "/drive/obstacle/status"
 #define TP_NAME_DRIVE_BREAK "/drive/break"
 #define TP_NAME_DRIVE_INFO "/drive/info"
 #define TP_NAME_DRIVE_VELOCITY "/drive/velocity/state"
+#define TP_NAME_CONTROL_BODY "/drive/can/ad_control_body"
+#define TP_NAME_OBSTACLE_EVENT "/drive/obstacle/event"
 
 #include<iostream>
 class Constants {
@@ -29,7 +32,10 @@ public:
         tp_name_obstacle_status_(TP_NAME_OBSTACLE_STATUS),
         tp_name_drive_break_(TP_NAME_DRIVE_BREAK),
         tp_name_drive_info_(TP_NAME_DRIVE_INFO),
-        tp_name_drive_velocity_(TP_NAME_DRIVE_VELOCITY)
+        tp_name_drive_velocity_(TP_NAME_DRIVE_VELOCITY),
+        tp_name_odom_eular_(TP_NAME_ODOM_EULAR),
+        tp_name_control_body_(TP_NAME_CONTROL_BODY),
+        tp_name_obstacle_event_(TP_NAME_OBSTACLE_EVENT)
         {}
 
 public :
@@ -43,6 +49,9 @@ public :
     const std::string tp_name_drive_break_;
     const std::string tp_name_drive_info_;
     const std::string tp_name_drive_velocity_;
+    const std::string tp_name_odom_eular_;
+    const std::string tp_name_control_body_;
+    const std::string tp_name_obstacle_event_;
 };
 
 
