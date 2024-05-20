@@ -4,6 +4,7 @@ log/
 cmake-build-debug/
 cmake-build-remote-host-cmake/
 .idea/
+.vscode/
 venv/
 swp
 

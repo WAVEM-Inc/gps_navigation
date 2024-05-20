@@ -23,7 +23,8 @@ void Car::set_location(const GpsData location) {
 Car::Car() : friction_coefficient_(FRICTION_COEFFICIENT),
              deceleration_(DECELERATION),
              drive_mode_(kec_car::DrivingMode::kStop),
-             cur_node_kind_(kec_car::NodeKind::kWaiting){
+             cur_node_kind_(kec_car::NodeKind::kWaiting),
+             odom_location_(0){
 }
 
 double Car::get_friction_coefficient() const {
@@ -57,3 +58,20 @@ double Car::get_speed() const {
 void Car::set_speed(double speed) {
         speed_ = speed;
 }
+
+kec_car::Direction Car::get_direction() const {
+    return direction_;
+}
+
+void Car::set_direction(kec_car::Direction direction) {
+    direction_ = direction;
+}
+
+double Car::get_odom_location() const {
+    return odom_location_;
+}
+
+void Car::set_odom_location(double odomLocation) {
+    odom_location_ = odomLocation;
+}
+

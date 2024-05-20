@@ -4,7 +4,7 @@
 
 #include "gps_data.hpp"
 
-double GpsData::fn_get_latitude() const {
+ double GpsData::fn_get_latitude() const {
     return latitude_;
 }
 
@@ -20,9 +20,7 @@ double GpsData::fn_get_longitude() const {
     return longitude_;
 }
 
-GpsData::GpsData(const double latitude, const double longitude) {
-    this->latitude_= latitude;
-    this->longitude_= longitude;
+GpsData::GpsData( double latitude,  double longitude):latitude_(latitude),longitude_(longitude) {
 }
 GpsData::GpsData() {
     this->latitude_=0;

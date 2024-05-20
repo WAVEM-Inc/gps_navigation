@@ -25,11 +25,19 @@ GpsData TaskGoal::get_cur_gps() {
 }
 
 GpsData TaskGoal::get_next_gps() {
-        return GpsData(next_node_.position.longitude,next_node_.position.latitude);
+        return GpsData(next_node_.position.latitude,next_node_.position.longitude);
 }
 
 double TaskGoal::get_next_heading() {
         return next_node_.heading;
+}
+
+kec_car::DrivingOption TaskGoal::get_cur_driving_option() {
+    return trans_.driving_option_determine(cur_node_.driving_option);
+}
+
+kec_car::Direction TaskGoal::get_cur_dir() {
+    return trans_.car_direction_determine(cur_node_.direction);
 }
 
 

@@ -16,18 +16,24 @@ private :
     using Node = route_msgs::msg::Node;
     Node cur_node_;
     Node next_node_;
-
+    kec_car::DrivingOption cur_do_;
+    kec_car::Direction cur_dir_;
     DataTypeTrans trans_;
 public :
     bool rotation_straight_check_;
     TaskGoal(Node cur_node, Node next_node);
-    kec_car::NodeKind get_cur_node_kind() ;
+    Node bypass_cur_node_;
+    Node bypass_next_node_;
+    kec_car::NodeKind get_cur_node_kind();
     kec_car::NodeKind get_next_node_kind();
     GpsData get_cur_gps();
     GpsData get_next_gps();
 
     double get_cur_heading();
     double get_next_heading();
+    kec_car::DrivingOption get_cur_driving_option();
+    kec_car::Direction get_cur_dir();
+
 };
 
 
