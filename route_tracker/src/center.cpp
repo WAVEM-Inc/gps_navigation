@@ -20,8 +20,7 @@ Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_c
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
-    car_->set_speed(0);
-    car_->set_drive_mode(kec_car::DrivingMode::kStop);
+    //car_->set_drive_mode(kec_car::DrivingMode::kStop);
     ros_parameter_setting();
     ros_init();
 }
@@ -209,21 +208,30 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
     cancel_check_= false;
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
-    DataTypeTrans trans;
-    car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
-    // goal->start_node 변경
-    // node 직접 계산
-    /*
-    Distance distance;
-    GpsData start(goal->start_node.position.latitude,goal->start_node.position.longitude);
-    GpsData end(goal->end_node.position.latitude,goal->end_node.position.longitude);
-    goal->start_node.heading = distance.calculate_line_angle(start,end);
+    try {
+        DataTypeTrans trans;
+        car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
+        // goal->start_node 변경
+        // node 직접 계산
 
-    */
-    //
-    task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
-    task_->bypass_cur_node_ = goal->start_node;
-    task_->bypass_next_node_ = goal->end_node;
+        Distance distance;
+        GpsData start(goal->start_node.position.latitude,goal->start_node.position.longitude);
+        GpsData end(goal->end_node.position.latitude,goal->end_node.position.longitude);
+
+        task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
+        task_->bypass_cur_node_ = goal->start_node;
+        task_->bypass_next_node_ = goal->end_node;
+        task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[task_degree]- %f",task_->get_cur_heading());
+#endif
+    }
+    catch(...){
+        RCLCPP_INFO(this->get_logger(),"GoalHandler Error");
+        return rclcpp_action::GoalResponse::REJECT;
+    }
+
+
     // * [Exception Handling] 연결 노드 일때 45도 이상 전환하지 못하도록
     try {
         CarBehavior car_behavior;
@@ -249,7 +257,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
             }
         }
     } //try
-    catch (std::out_of_range &error) {
+    catch (...) {
         // 3) 올바른 이동 명령인가?
 #if DEBUG_MODE == 3
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Goal Error]");
