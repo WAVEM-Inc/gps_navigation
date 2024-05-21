@@ -747,7 +747,12 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
     } else {
         car_->set_drive_mode(kec_car::DrivingMode::kStraight);
     }
-
+    // 다음 교차로면 일찍 정지하기 위함
+    // 단위 테스트 필요
+    if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
+        init_distance -= ros_parameter_->rotation_straight_dist_;
+    }
+    
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
     double braking_distance = center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
 
