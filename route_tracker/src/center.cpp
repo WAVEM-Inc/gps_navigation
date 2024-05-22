@@ -784,8 +784,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     init_distance);
 #endif
         // 6-1-1) 목적지 도착 여부
-        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+0.1) {
-#if DEBUG_MODE == 2
+        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+1) {
+#if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
 /*
@@ -893,7 +893,7 @@ else{ // 6-1-6) 각도 변경 필요? N
                             float speed = speed_setting(static_cast<float>(recovery_goal_distance) ,init_distance,static_cast<float>(braking_distance));
                             prev_speed_ = speed;
 #if DEBUG_MODE == 1
-                            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed %f",speed);
+                            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- [recovery] - acc speed %f prev %f",speed,prev_speed_);
 #endif
                             calculate_straight_movement(
                                     speed);
@@ -917,8 +917,9 @@ else{ // 6-1-6) 각도 변경 필요? N
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
             float speed = speed_setting(static_cast<float>(goal_distance),init_distance,static_cast<float>(braking_distance));
             prev_speed_= speed;
+
 #if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f",speed);
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f prev %f",speed,prev_speed_);
 #endif
             calculate_straight_movement(speed);
             //feedback publish
@@ -1002,7 +1003,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 float speed = speed_setting(static_cast<float>(goal_distance), turn_straight_init_distance, static_cast<float>(braking_distance)+1);
                 prev_speed_ = speed;
 #if DEBUG_MODE == 1
-                RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f",speed);
+                RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f, prev %f",speed,prev_speed_);
 #endif
                 calculate_straight_movement(speed);
                 //
@@ -1136,38 +1137,6 @@ void Center::brake_unlock() {
     pub_break_->publish(temp_break);
 }
 
-float Center::speed_setting(float goal_dist, float brake_dist) {
-    float cur_speed = 0;
-#if DEBUG_MODE == 1
-    RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal %lf - brake %lf , prev %f", goal_dist,brake_dist,prev_speed_ );
-#endif
-    if(goal_dist > brake_dist) {
-        if (prev_speed_ >= ros_parameter_->max_speed_) {
-            cur_speed = ros_parameter_->max_speed_;
-        } else {
-            cur_speed = prev_speed_;
-            prev_speed_ += 0.1;
-        }
-    }
-    else{
-        if(prev_speed_ <= 0.20001){
-            prev_speed_ = 0.2;
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 > %f", prev_speed_ );
-#endif
-            return prev_speed_;
-        }
-        else {
-            prev_speed_ -= 0.005;
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 < %f", prev_speed_ );
-#endif
-            cur_speed = static_cast<float>(prev_speed_);
-        }
-    }
-    return cur_speed;
-}
-
 float Center::speed_setting(const float goal_dist, const float init_dist, const float brake_dist) {
     float cur_speed = 0;
     float max_speed = 0;
@@ -1190,8 +1159,7 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
         if (prev_speed_ >= max_speed) {
             cur_speed = max_speed;
         } else {
-            prev_speed_ += ros_parameter_->start_acc_;
-            cur_speed = prev_speed_;
+            cur_speed = prev_speed_+ros_parameter_->start_acc_;
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] temp, prev %f",cur_speed );
 #endif
