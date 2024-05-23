@@ -2,7 +2,7 @@ route_tracker_node:
   ros__parameters:
     imu_correction: 1.0
     max_speed: 1.2
-    driving_calibration_min_angle: 1.0
+    driving_calibration_min_angle: 0.3 # 회전 각도 1->0.3
     driving_calibration_max_angle: 30.0
     driving_calibration_angle_increase: 10.0
     goal_distance: 0.3 # cm
@@ -10,7 +10,7 @@ route_tracker_node:
     rotation_angle_increase: 0.1
     rotation_angle_tolerance: 0.2 # 3-> 0.5
     rotation_max_speed : 0.8 # 회전 속도
-    recovery_goal_tolerance: 0.5
+    recovery_goal_tolerance: 0.5 # 복귀 주행 목적지 도착 정확도
     deceleration: 9.8
     friction_coefficient: 0.4 # 마찰계수
     near_destination_dist: 1.8 

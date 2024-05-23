@@ -810,10 +810,11 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
-        /* routedevation_msgs::msg::Status temp_devation_status;
+        routedevation_msgs::msg::Status temp_devation_status;
         if(goal_distance<ros_parameter_->near_destination_dist_){
             temp_devation_status.offcource_status=false;
-        }*/
+        }
+
         routedevation_msgs::msg::Status temp_devation_status;
         {
             mutex_.lock();
@@ -850,6 +851,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                 GpsData temp_car_degree = car_->get_location();
                 GpsData temp_goal_degree = gps_data;
                 double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                task_->set_cur_degree(static_cast<double>(goal_angle));
                 while (rclcpp::ok()) {
                     if (cancel_check(result, goal_handle)) {
                         return;
