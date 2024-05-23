@@ -6,5 +6,5 @@ cmake-build-remote-host-cmake/
 .idea/
 .vscode/
 venv/
-swp
-
+.swp
+.pyc
