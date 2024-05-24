@@ -811,11 +811,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
         routedevation_msgs::msg::Status temp_devation_status;
-        if(goal_distance<ros_parameter_->near_destination_dist_){
-            temp_devation_status.offcource_status=false;
-        }
 
-        routedevation_msgs::msg::Status temp_devation_status;
         {
             mutex_.lock();
             temp_devation_status = *devation_status_;
@@ -824,7 +820,9 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         if(task_->get_cur_dir()==kec_car::Direction::kBackward){
             temp_devation_status.offcource_status=0;
         }
-
+        if(goal_distance<ros_parameter_->near_destination_dist_){
+            temp_devation_status.offcource_status=false;
+        }
         // 6-1-3-Y)
         if (temp_devation_status.offcource_status) {
 #if DEBUG_MODE == 1
