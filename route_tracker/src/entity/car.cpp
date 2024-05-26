@@ -24,7 +24,11 @@ Car::Car() : friction_coefficient_(FRICTION_COEFFICIENT),
              deceleration_(DECELERATION),
              drive_mode_(kec_car::DrivingMode::kStop),
              cur_node_kind_(kec_car::NodeKind::kWaiting),
-             odom_location_(0){
+             direction_(kec_car::Direction::kForward),
+             degree_(0),
+             odom_location_(0),
+             speed_(0),
+             location_(GpsData(0,0)){
 }
 
 double Car::get_friction_coefficient() const {

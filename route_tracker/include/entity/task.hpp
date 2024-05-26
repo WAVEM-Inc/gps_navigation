@@ -28,7 +28,7 @@ public :
     kec_car::NodeKind get_next_node_kind();
     GpsData get_cur_gps();
     GpsData get_next_gps();
-
+    void set_cur_degree(float degree);
     double get_cur_heading();
     double get_next_heading();
     kec_car::DrivingOption get_cur_driving_option();

@@ -41,3 +41,6 @@ kec_car::Direction TaskGoal::get_cur_dir() {
 }
 
 
+void TaskGoal::set_cur_degree(float degree){
+    cur_node_.heading = degree;
+}

@@ -20,8 +20,7 @@ Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_c
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
-    car_->set_speed(0);
-    car_->set_drive_mode(kec_car::DrivingMode::kStop);
+    //car_->set_drive_mode(kec_car::DrivingMode::kStop);
     ros_parameter_setting();
     ros_init();
 }
@@ -209,21 +208,30 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
     cancel_check_= false;
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
-    DataTypeTrans trans;
-    car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
-    // goal->start_node 변경
-    // node 직접 계산
-    /*
-    Distance distance;
-    GpsData start(goal->start_node.position.latitude,goal->start_node.position.longitude);
-    GpsData end(goal->end_node.position.latitude,goal->end_node.position.longitude);
-    goal->start_node.heading = distance.calculate_line_angle(start,end);
+    try {
+        DataTypeTrans trans;
+        car_->set_direction(trans.car_direction_determine(goal->start_node.direction));
+        // goal->start_node 변경
+        // node 직접 계산
 
-    */
-    //
-    task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
-    task_->bypass_cur_node_ = goal->start_node;
-    task_->bypass_next_node_ = goal->end_node;
+        Distance distance;
+        GpsData start(goal->start_node.position.latitude,goal->start_node.position.longitude);
+        GpsData end(goal->end_node.position.latitude,goal->end_node.position.longitude);
+
+        task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
+        task_->bypass_cur_node_ = goal->start_node;
+        task_->bypass_next_node_ = goal->end_node;
+        task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[task_degree]- %f",task_->get_cur_heading());
+#endif
+    }
+    catch(...){
+        RCLCPP_INFO(this->get_logger(),"GoalHandler Error");
+        return rclcpp_action::GoalResponse::REJECT;
+    }
+
+
     // * [Exception Handling] 연결 노드 일때 45도 이상 전환하지 못하도록
     try {
         CarBehavior car_behavior;
@@ -249,7 +257,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
             }
         }
     } //try
-    catch (std::out_of_range &error) {
+    catch (...) {
         // 3) 올바른 이동 명령인가?
 #if DEBUG_MODE == 3
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Goal Error]");
@@ -776,8 +784,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                     init_distance);
 #endif
         // 6-1-1) 목적지 도착 여부
-        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+0.1) {
-#if DEBUG_MODE == 2
+        if (goal_distance <= ros_parameter_->goal_distance_ || goal_distance > init_distance+1) {
+#if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[goal]");
 #endif
 /*
@@ -802,11 +810,8 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 
         // 6-1-2) 이탈 정보 수신 -- route_deviation_callback
         // 6-1-3) 이탈 되었는가?
-        /* routedevation_msgs::msg::Status temp_devation_status;
-        if(goal_distance<ros_parameter_->near_destination_dist_){
-            temp_devation_status.offcource_status=false;
-        }*/
         routedevation_msgs::msg::Status temp_devation_status;
+
         {
             mutex_.lock();
             temp_devation_status = *devation_status_;
@@ -815,7 +820,9 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
         if(task_->get_cur_dir()==kec_car::Direction::kBackward){
             temp_devation_status.offcource_status=0;
         }
-
+        if(goal_distance<ros_parameter_->near_destination_dist_){
+            temp_devation_status.offcource_status=false;
+        }
         // 6-1-3-Y)
         if (temp_devation_status.offcource_status) {
 #if DEBUG_MODE == 1
@@ -842,6 +849,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
                 GpsData temp_car_degree = car_->get_location();
                 GpsData temp_goal_degree = gps_data;
                 double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                task_->set_cur_degree(static_cast<double>(goal_angle));
                 while (rclcpp::ok()) {
                     if (cancel_check(result, goal_handle)) {
                         return;
@@ -885,7 +893,7 @@ else{ // 6-1-6) 각도 변경 필요? N
                             float speed = speed_setting(static_cast<float>(recovery_goal_distance) ,init_distance,static_cast<float>(braking_distance));
                             prev_speed_ = speed;
 #if DEBUG_MODE == 1
-                            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed %f",speed);
+                            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- [recovery] - acc speed %f prev %f",speed,prev_speed_);
 #endif
                             calculate_straight_movement(
                                     speed);
@@ -909,8 +917,9 @@ else{ // 6-1-6) 각도 변경 필요? N
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
             float speed = speed_setting(static_cast<float>(goal_distance),init_distance,static_cast<float>(braking_distance));
             prev_speed_= speed;
+
 #if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f",speed);
+            RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]- acc speed2 %f prev %f",speed,prev_speed_);
 #endif
             calculate_straight_movement(speed);
             //feedback publish
@@ -994,7 +1003,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 float speed = speed_setting(static_cast<float>(goal_distance), turn_straight_init_distance, static_cast<float>(braking_distance)+1);
                 prev_speed_ = speed;
 #if DEBUG_MODE == 1
-                RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f",speed);
+                RCLCPP_INFO(this->get_logger(), "[Center]-[turn_move]- acc speed %f, prev %f",speed,prev_speed_);
 #endif
                 calculate_straight_movement(speed);
                 //
@@ -1128,38 +1137,6 @@ void Center::brake_unlock() {
     pub_break_->publish(temp_break);
 }
 
-float Center::speed_setting(float goal_dist, float brake_dist) {
-    float cur_speed = 0;
-#if DEBUG_MODE == 1
-    RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal %lf - brake %lf , prev %f", goal_dist,brake_dist,prev_speed_ );
-#endif
-    if(goal_dist > brake_dist) {
-        if (prev_speed_ >= ros_parameter_->max_speed_) {
-            cur_speed = ros_parameter_->max_speed_;
-        } else {
-            cur_speed = prev_speed_;
-            prev_speed_ += 0.1;
-        }
-    }
-    else{
-        if(prev_speed_ <= 0.20001){
-            prev_speed_ = 0.2;
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 > %f", prev_speed_ );
-#endif
-            return prev_speed_;
-        }
-        else {
-            prev_speed_ -= 0.005;
-#if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] goal 0.2 < %f", prev_speed_ );
-#endif
-            cur_speed = static_cast<float>(prev_speed_);
-        }
-    }
-    return cur_speed;
-}
-
 float Center::speed_setting(const float goal_dist, const float init_dist, const float brake_dist) {
     float cur_speed = 0;
     float max_speed = 0;
@@ -1182,8 +1159,7 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
         if (prev_speed_ >= max_speed) {
             cur_speed = max_speed;
         } else {
-            prev_speed_ += ros_parameter_->start_acc_;
-            cur_speed = prev_speed_;
+            cur_speed = prev_speed_+ros_parameter_->start_acc_;
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] temp, prev %f",cur_speed );
 #endif
