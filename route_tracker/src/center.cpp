@@ -386,7 +386,13 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         }// 대기
     }
     else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
-        odom_move(feedback, result, goal_handle);
+        if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
+            car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
+            turn_move(feedback, result, goal_handle, car_behavior);
+        }
+        else {
+            odom_move(feedback, result, goal_handle);
+        }
     }
 
     // 7) 완료 처리
@@ -937,8 +943,19 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     RCLCPP_INFO(this->get_logger(), "[turn_move mode] start");
 #endif
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
-    double turn_straight_init_distance = center_distance->distance_from_perpendicular_line(
-            task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+    double turn_straight_init_distance =0;
+    if(task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
+        turn_straight_init_distance = center_distance->distance_from_perpendicular_line(
+                task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+    }
+    else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
+        double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
+        turn_straight_init_distance =temp_goal+car_->get_odom_location();
+    }
+    else{
+        return;
+    }
     car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
     double braking_distance= center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
     while (rclcpp::ok()) {
@@ -948,8 +965,14 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             if (task_->get_cur_node_kind() == kec_car::NodeKind::kIntersection) {
                 car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
             }
-            double goal_distance = center_distance->distance_from_perpendicular_line(
-                    task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+            double goal_distance=0;
+            if(task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
+                goal_distance = center_distance->distance_from_perpendicular_line(
+                        task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
+            }
+            else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
+                goal_distance = turn_straight_init_distance - car_->get_odom_location();
+            }
             // 회전 주행 알림.
             //feedback publish
             start_on(feedback, goal_handle);
