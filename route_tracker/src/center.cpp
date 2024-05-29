@@ -1098,7 +1098,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         CarBehavior car_behavior ;
         //car_behavior.determine_brake_pressure(init_goal_dist,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
 
-        double acceleration= speed_setting(goal_distance-car_->get_odom_location(), init_goal_dist, braking_distance);
+        double acceleration= speed_setting(goal_distance, init_goal_dist, braking_distance);
         prev_speed_ = acceleration;
         if (car_->get_direction() == kec_car::Direction::kBackward) {
             acceleration = -acceleration;
@@ -1106,7 +1106,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         else{
             car_->set_drive_mode(kec_car::DrivingMode::kStraight);
         }
-        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] goal : %f odom :%f distance %f",goal_distance,car_->get_odom_location(),goal_distance-car_->get_odom_location());
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] goal : %f odom :%f init_goal_dist %f",goal_distance,car_->get_odom_location(),init_goal_dist);
         straight_move_correction(static_cast<float>(acceleration));
         start_on(feedback, goal_handle);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
