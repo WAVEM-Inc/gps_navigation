@@ -1066,10 +1066,12 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
 
     // goal distance setting
-    double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
-    RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
-    double goal_distance =temp_goal+car_->get_odom_location();
-/*    double acceleration= speed_setting();
+    double init_goal_dist =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(), task_->get_next_gps(), task_->get_cur_gps());
+    RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f", init_goal_dist, car_->get_odom_location());
+    //double goal_distance =init_goal_dist+car_->get_odom_location();
+    double goal_distance =car_->get_odom_location();
+
+    /*    double acceleration= speed_setting();
     if (car_->get_direction() == kec_car::Direction::kBackward) {
         acceleration = -acceleration;
     }
@@ -1083,20 +1085,20 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         if (cancel_check(result, goal_handle)) {
             return;
         }
-
-        if(goal_distance-car_->get_odom_location()<ros_parameter_->goal_distance_){
+        goal_distance = init_goal_dist - std::fabs(car_->get_odom_location() - goal_distance);
+        if(goal_distance<ros_parameter_->goal_distance_){
             CarBehavior car_behavior;
             car_behavior.cmd_slowly_stop(pub_cmd_, pub_break_);
             break;
         }
         // 240502
 #if DEBUG_MODE == 1
-        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test %lf - %lf", temp_goal,goal_distance-car_->get_odom_location() );
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move]-brake test %lf - %lf", init_goal_dist, goal_distance - car_->get_odom_location() );
 #endif
         CarBehavior car_behavior ;
-        //car_behavior.determine_brake_pressure(temp_goal,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
+        //car_behavior.determine_brake_pressure(init_goal_dist,goal_distance-car_->get_odom_location(),car_->get_speed(),ros_parameter_->max_speed_,&odom_brake_pressure,pub_break_);
 
-        double acceleration= speed_setting(goal_distance-car_->get_odom_location(),temp_goal,braking_distance);
+        double acceleration= speed_setting(goal_distance-car_->get_odom_location(), init_goal_dist, braking_distance);
         prev_speed_ = acceleration;
         if (car_->get_direction() == kec_car::Direction::kBackward) {
             acceleration = -acceleration;
