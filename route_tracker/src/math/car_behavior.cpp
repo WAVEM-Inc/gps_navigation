@@ -241,3 +241,14 @@ void CarBehavior::cmd_slowly_stop(rclcpp::Publisher<geometry_msgs::msg::Twist>::
     pub_cmd->publish(stop_twist);
     // prev_speed_=0;
 }
+
+double CarBehavior::car_degree_reverse(double car_degree) {
+        double angle_difference = car_degree - 180;
+        // 각도차를 -180 ~ 180 범위 내로 정규화
+        angle_difference = std::fmod(angle_difference, 360);
+        // 결과가 음수일 경우 360을 더해 양수로 만듭니다.
+        if (angle_difference < 0) {
+            angle_difference += 360.0;
+        }
+        return angle_difference;
+}

@@ -222,6 +222,11 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
         task_->bypass_cur_node_ = goal->start_node;
         task_->bypass_next_node_ = goal->end_node;
         task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
+        if(task_->get_cur_dir()==kec_car::Direction::kBackward){
+            CarBehavior car_behavior;
+            double reverse_degree = car_behavior.car_degree_reverse(task_->get_cur_heading());
+            task_->set_cur_degree(static_cast<float>(reverse_degree));
+        }
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[task_degree]- %f",task_->get_cur_heading());
 #endif
