@@ -54,6 +54,12 @@ namespace kec_car {
         kCrossroads,
         kArrive
     };
+    enum class DrivingSpeedSetting{
+        kGpsStraight,
+        kGpsTurn,
+        kOdomStraight,
+        kOdomTurn
+    };
 
 }
 
