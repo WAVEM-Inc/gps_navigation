@@ -949,14 +949,15 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #endif
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
     double turn_straight_init_distance =0;
+    double odom_goal_dist = 0;
     if(task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
         turn_straight_init_distance = center_distance->distance_from_perpendicular_line(
                 task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
     }
     else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
-        double temp_goal =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
-        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! %f odom %f",temp_goal,car_->get_odom_location());
-        turn_straight_init_distance =temp_goal+car_->get_odom_location();
+        turn_straight_init_distance =  center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),task_->get_next_gps(),task_->get_cur_gps());
+        RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ! goal %f odom %f",odom_goal_dist,car_->get_odom_location());
+        odom_goal_dist = car_->get_odom_location();
     }
     else{
         return;
@@ -976,7 +977,8 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                         task_->get_cur_gps(), task_->get_next_gps(), car_->get_location());
             }
             else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
-                goal_distance = turn_straight_init_distance - car_->get_odom_location();
+                //goal_distance = turn_straight_init_distance - car_->get_odom_location();
+                goal_distance = turn_straight_init_distance - std::fabs(car_->get_odom_location()-odom_goal_dist);
             }
             // 회전 주행 알림.
             //feedback publish
@@ -984,8 +986,8 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 
 #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(),
-                        "[turn_move mode] - straight goal check goal_distance %f init %f rotation_straight_dist_ %f ",
-                        goal_distance, turn_straight_init_distance, ros_parameter_->rotation_straight_dist_);
+                        "[turn_move mode] - straight goal check goal_distance %f init %f rotation_straight_dist_ %f , odom_location %f",
+                        goal_distance, turn_straight_init_distance, ros_parameter_->rotation_straight_dist_,car_->get_odom_location());
 #endif
             // 2-6) 직진 목적지에 도착했는가?
 
