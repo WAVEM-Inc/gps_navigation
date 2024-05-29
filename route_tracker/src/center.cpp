@@ -222,10 +222,14 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
         task_->bypass_cur_node_ = goal->start_node;
         task_->bypass_next_node_ = goal->end_node;
         task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
+         RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] start task %s",trans.drive_option_to_string(task_->get_cur_driving_option()).c_str());
+        
         if(task_->get_cur_dir()==kec_car::Direction::kBackward){
             CarBehavior car_behavior;
             double reverse_degree = car_behavior.car_degree_reverse(task_->get_cur_heading());
             task_->set_cur_degree(static_cast<float>(reverse_degree));
+              RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] start2 task %s",trans.drive_option_to_string(task_->get_cur_driving_option()).c_str());
+        
         }
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[task_degree]- %f",task_->get_cur_heading());
@@ -334,9 +338,12 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 
 #if DEBUG_MODE == 1
     RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] init_dist %f",init_distance);
+    DataTypeTrans trans;
+    RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] task %s",trans.drive_option_to_string(task_->get_cur_driving_option()).c_str());
 #endif
 
     if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
+        RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] kGps");
         //6-1) 진진 주행
         if (car_behavior.straight_judgment(task_->get_cur_node_kind(), task_->get_next_node_kind())) {
 /*            if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
@@ -391,6 +398,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
         }// 대기
     }
     else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
+           RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] kOdom");
         if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
             car_->set_drive_mode(kec_car::DrivingMode::kCrossroads);
             turn_move(feedback, result, goal_handle, car_behavior);

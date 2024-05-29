@@ -69,6 +69,7 @@ public:
      * @return
      */
     kec_car::DrivingOption driving_option_determine(const std::string& driving_option_str){
+                std::cout << driving_option_str << std::endl;
             using DO = kec_car::DrivingOption;
             static const std::unordered_map<std::string, DO> driving_option_map = {
                     {"odom", DO::kOdom},
@@ -76,13 +77,23 @@ public:
             };
             auto it = driving_option_map.find(driving_option_str);
             if (it != driving_option_map.end()) {
+                std::cout << "test"<< std::endl;
                 return it->second;
             } else {
-                // 기본값으로 전진 방향 설정
+                std::cout << "gps"<< std::endl;
                 return DO::kGps;
             }
     }
-
+    std::string drive_option_to_string(const kec_car::DrivingOption mode) {
+            switch (mode) {
+                    case kec_car::DrivingOption::kGps:
+                            return "kGps"; //  "직진"
+                    case kec_car::DrivingOption::kOdom:
+                            return "kOdom"; //  "복귀"
+                    default:
+                            return "Unknown Driving Mode";
+            }//switch
+    }//drive_mode_to_string
 };
 
 
