@@ -688,7 +688,8 @@ void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPt
 void Center::drive_info_timer() {
     DataTypeTrans data_type_trans;
     route_msgs::msg::DriveState drive_state;
-    drive_state.code = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
+    std::string drive_move = data_type_trans.drive_mode_to_string(car_->get_drive_mode());
+    drive_state.code = drive_move;
     drive_state.speaker=speaker_seq_++;
     if (car_->get_drive_mode() == kec_car::DrivingMode::kArrive) {
         std::unique_lock<std::mutex> ulm(goal_mutex_);
@@ -698,7 +699,7 @@ void Center::drive_info_timer() {
         drive_state.start_node = task_->bypass_cur_node_;
         drive_state.end_node = task_->bypass_next_node_;
     }
-    //RCLCPP_INFO(this->get_logger(),"[Center]-drive_info_timer-car : %s",car_->get_drive_mode());
+    RCLCPP_INFO(this->get_logger(),"[Center]-drive_info_timer-car : %s",drive_move.c_str());
     pub_drive_state_->publish(drive_state);
 }
 
