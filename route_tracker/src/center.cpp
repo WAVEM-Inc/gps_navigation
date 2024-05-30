@@ -572,13 +572,15 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
 #endif
     // 복구모드 시 갱신 필요 없음.
     // 복구 중 또 들어오는 경우를 방지하기 위함.
+    
+    /*
     if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery) {
         return;
-    }
-
-/*    if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery && status->offcource_status==true){
-        return;
     }*/
+
+    if (car_->get_drive_mode() == kec_car::DrivingMode::kRecovery && status->offcource_status==true){
+        return;
+    }
     else if(car_->get_drive_mode()==kec_car::DrivingMode::kCrossroads){
         devation_status_= std::make_shared<routedevation_msgs::msg::Status>();
         devation_status_->offcource_status=0;
@@ -699,7 +701,7 @@ void Center::drive_info_timer() {
         drive_state.start_node = task_->bypass_cur_node_;
         drive_state.end_node = task_->bypass_next_node_;
     }
-    RCLCPP_INFO(this->get_logger(),"[Center]-drive_info_timer-car : %s",drive_move.c_str());
+    //RCLCPP_INFO(this->get_logger(),"[Center]-drive_info_timer-car : %s",drive_move.c_str());
     pub_drive_state_->publish(drive_state);
 }
 
@@ -872,16 +874,23 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 #endif
                 car_->set_drive_mode(kec_car::DrivingMode::kRecovery);
                 // 6-1-4) 복구 목적지 설정
-                GpsData gps_data(devation_status_->offcource_goal_lat,
+                /*GpsData gps_data(devation_status_->offcource_goal_lat,
                                  devation_status_->offcource_goal_lon);
                 GpsData temp_car_degree = car_->get_location();
                 GpsData temp_goal_degree = gps_data;
                 double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
-                task_->set_cur_degree(static_cast<double>(goal_angle));
+                task_->set_cur_degree(static_cast<double>(goal_angle));*/
                 while (rclcpp::ok()) {
                     if (cancel_check(result, goal_handle)) {
                         return;
                     }
+                    GpsData gps_data(devation_status_->offcource_goal_lat,
+                    devation_status_->offcource_goal_lon);
+                    GpsData temp_car_degree = car_->get_location();
+                    GpsData temp_goal_degree = gps_data;
+                    double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                    task_->set_cur_degree(static_cast<double>(goal_angle));
+
                     // 6-1-5) 복귀 목적지 도착 여부 N
                     double recovery_goal_distance = center_distance->distance_from_perpendicular_line(
                             task_->get_cur_gps(), gps_data,
