@@ -206,6 +206,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
                 goal->end_node.direction.c_str(), goal->end_node.position.latitude, goal->end_node.position.longitude);
 #endif
     cancel_check_= false;
+    reject_check_= false;
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
     try {
@@ -237,6 +238,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
     }
     catch(...){
         RCLCPP_INFO(this->get_logger(),"GoalHandler Error");
+        reject_check_=true;
         return rclcpp_action::GoalResponse::REJECT;
     }
 
@@ -260,6 +262,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
                             "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Heading Over] car degree %lf , task cur_heading %lf",
                             check_car_degree, check_cur_task_degree);
 #endif
+                reject_check_ = true;
                 return rclcpp_action::GoalResponse::REJECT;
             } else {
                 return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
@@ -271,6 +274,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
 #if DEBUG_MODE == 3
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[REJECT]-[Goal Error]");
 #endif
+        reject_check_ = true;
         return rclcpp_action::GoalResponse::REJECT;
     } // catch
     // 4-N route_to_pose_accepted_handle
@@ -411,6 +415,10 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     // 7) 완료 처리
     if (rclcpp::ok()) {
         if(cancel_check_){
+            cmd_stop();
+            return;
+        }
+        else if(reject_check_){
             cmd_stop();
             return;
         }
