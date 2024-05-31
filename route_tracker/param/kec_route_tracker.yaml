@@ -15,4 +15,7 @@ route_tracker_node:
     friction_coefficient: 0.4 # 마찰계수
     near_destination_dist: 1.8 
     rotation_braking_arc : 10.0 # 회전 중 도착지로부터 감속 범위
-    start_acc: 0.001
+    start_acc: 0.001 # 출발 가속 속도
+    turn_acc: 0.01 # 회전 가속 속도
+    odom_cross_road_init: 6.3 # m
+

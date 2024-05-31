@@ -24,8 +24,9 @@ public:
                           float near_destination_dist,
                           float rotation_max_speed,
                           float rotation_braking_arc,
-                          float start_acc
-    )
+                          float start_acc,
+                          float turn_acc,
+                          float odom_cross_road_init)
             : imu_correction_(imu_correction),
               max_speed_(max_speed),
               driving_calibration_max_angle_(driving_calibration_max_angle),
@@ -41,7 +42,9 @@ public:
               near_destination_dist_(near_destination_dist),
               rotation_max_speed_(rotation_max_speed),
               rotation_braking_arc_(rotation_braking_arc),
-              start_acc_(start_acc){
+              start_acc_(start_acc),
+              turn_acc_(turn_acc),
+              odom_cross_road_init_(odom_cross_road_init){
 #if DEBUG_MODE == 1
             std::cout << "imu_correction_ : " << imu_correction << '\n' <<
                       "max_speed_ : " << max_speed << '\n' <<
@@ -58,7 +61,9 @@ public:
                       "near_destination_dist_ : "<<near_destination_dist<<'\n' <<
                       "rotation_max_speed : "<<rotation_max_speed<<'\n'<<
                       "rotation_braking_arc : "<<rotation_braking_arc<<'\n'<<
-                      "start_acc : " << start_acc<<std::endl;
+                      "start_acc : " << start_acc<<'\n'<<
+                      "turn acc : "<<turn_acc<<'\n'<<
+                      "odom_cross_road_init : " <<odom_cross_road_init<<std::endl;
 #endif
     }
 
@@ -79,6 +84,8 @@ public :
     float rotation_max_speed_;
     float rotation_braking_arc_;
     float start_acc_;
+    float turn_acc_;
+    float odom_cross_road_init_;
 };
 
 
