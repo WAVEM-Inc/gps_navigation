@@ -248,8 +248,13 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
         imu_offset.stamp = this->now();
         pub_imu_offset_->publish(imu_offset);
 
-        task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
-
+        // EndNode Setting
+        if(task_->get_cur_node_kind()==kec_car::NodeKind::kEndpoint){
+            task_->set_cur_degree(static_cast<float>(degrees));
+        }
+        else {
+            task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start, end)));
+        }
         if(task_->get_cur_dir()==kec_car::Direction::kBackward){
             CarBehavior car_behavior;
             double reverse_degree = car_behavior.car_degree_reverse(task_->get_cur_heading());
