@@ -13,16 +13,10 @@
  * @param str_input
  * @return 각도, 오프셋
  */
-std::pair<int, double> DegreeConvert::parse_input(const std::string& str_input) {
-    size_t dot_pos = str_input.find('.');
-    if (dot_pos == std::string::npos) {
-        throw std::invalid_argument("Invalid input format");
-    }
-
-    int degrees = std::stoi(str_input.substr(0, dot_pos));
-    double fraction = std::stod(DIGIT_STR + str_input.substr(dot_pos + 1));
-
-    return { degrees, fraction };
+std::pair<int, double> DegreeConvert::parse_input(float float_input) {
+    int degrees = static_cast<int>(float_input);
+    float fraction = float_input - static_cast<float>(degrees);
+    return {degrees, fraction};
 }
 /**
  * @brief 소수 부분을 1000을 기준으로 변환하는 함수

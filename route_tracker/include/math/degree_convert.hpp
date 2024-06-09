@@ -10,7 +10,8 @@
 #include <utility>
 
 class DegreeConvert {
-    std::pair<int, double> parse_input(const std::string& str_input);
+public:
+    std::pair<int, double> parse_input(float float_input);
     double convert_fraction(double fraction);
 };
 

@@ -17,10 +17,16 @@
 using namespace std::chrono_literals;
 
 Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false),obstacle_first_check_(false),speaker_seq_(0),prev_speed_(0){
+    RCLCPP_INFO(this->get_logger(),
+                R"(
+ ██████  ██████  ███████         ███    ██  █████  ██    ██ ██
+██       ██   ██ ██              ████   ██ ██   ██ ██    ██ ██
+██   ███ ██████  ███████         ██ ██  ██ ███████ ██    ██ ██
+██    ██ ██           ██         ██  ██ ██ ██   ██  ██  ██  ██
+ ██████  ██      ███████ ███████ ██   ████ ██   ██   ████   ██)");
     constants_ = std::make_unique<Constants>();
     imu_converter_ = std::make_unique<ImuConvert>();
     car_ = std::make_unique<Car>();
-    //car_->set_drive_mode(kec_car::DrivingMode::kStop);
     ros_parameter_setting();
     ros_init();
 }
@@ -34,7 +40,7 @@ void Center::ros_init() {
     init_obstacle.obstacle_value = false;
     //
     routedevation_msgs::msg::Status init_routedevation;
-    init_routedevation.offcource_status = 0;
+    init_routedevation.offcource_status = false;
     //
     GpsData data(0, 0);
 
@@ -170,6 +176,11 @@ void Center::ros_init() {
     pub_obs_event_ = this->create_publisher<obstacle_msgs::msg::Status>(constants_->tp_name_obstacle_event_,default_qos,
                                                                         pub_obs_event_options);
 
+    rclcpp::PublisherOptions pub_imu_offest_options;
+    pub_imu_offest_options.callback_group = cbg_pub_imu_offset_;
+    pub_imu_offset_ = this->create_publisher<route_msgs::msg::Offset>(constants_->tp_name_imu_offset_,default_qos,
+                                                                       pub_imu_offest_options);
+
     // 로봇 모드 timer
     //   ㄴ speaker timer
     // 0.1 sec = 100ms
@@ -223,15 +234,26 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
         task_ = std::make_unique<TaskGoal>(goal->start_node, goal->end_node);
         task_->bypass_cur_node_ = goal->start_node;
         task_->bypass_next_node_ = goal->end_node;
+
+        // imu offset 설정
+        DegreeConvert degree_convert;
+        route_msgs::msg::Offset imu_offset;
+        auto [degrees, fraction] = degree_convert.parse_input(static_cast<float>(task_->get_cur_heading()));
+        double converted_fraction = degree_convert.convert_fraction(fraction);
+#if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(),
+                    "[Center]-[route_to_pose_goal_handle]-[imu-offset-setting] %d - %lf\n",degrees,converted_fraction);
+#endif
+        imu_offset.data = static_cast<float>(converted_fraction);
+        imu_offset.stamp = this->now();
+        pub_imu_offset_->publish(imu_offset);
+
         task_->set_cur_degree(static_cast<float>(distance.calculate_line_angle(start,end)));
-         RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] start task %s",trans.drive_option_to_string(task_->get_cur_driving_option()).c_str());
-        
+
         if(task_->get_cur_dir()==kec_car::Direction::kBackward){
             CarBehavior car_behavior;
             double reverse_degree = car_behavior.car_degree_reverse(task_->get_cur_heading());
             task_->set_cur_degree(static_cast<float>(reverse_degree));
-              RCLCPP_INFO(this->get_logger(), "[route_to_pose_execute] start2 task %s",trans.drive_option_to_string(task_->get_cur_driving_option()).c_str());
-        
         }
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[task_degree]- %f",task_->get_cur_heading());
@@ -905,7 +927,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         odom_goal_dist = car_->get_odom_location();
 
         if(task_->get_cur_node_kind()==kec_car::NodeKind::kIntersection){
-              #if DEBUG_MODE == 1
+        #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[odom_move] ? goal %f odom %f",odom_goal_dist,car_->get_odom_location());
         #endif
     	    turn_straight_init_distance -=6.3;

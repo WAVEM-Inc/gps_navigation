@@ -4,6 +4,7 @@ project(route_msgs)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 set( msg_files
@@ -14,6 +15,7 @@ set( msg_files
   "msg/Position.msg"
   "msg/DriveState.msg"
   "msg/DriveBreak.msg"
+  "msg/Offset.msg"
   "action/RouteToPose.action"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
