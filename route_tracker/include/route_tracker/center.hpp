@@ -49,6 +49,7 @@ private :
     double init_distance ;
     bool cancel_check_;
     bool reject_check_;
+    bool failed_check_;
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
@@ -144,7 +145,7 @@ private :
     void straight_move_correction(float acceleration);
     void odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
     void turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle,CarBehavior car_behavior);
-    void recovery_move(routedevation_msgs::msg::Status devation_status,const std::shared_ptr<RouteToPose::Feedback> feedback,
+    kec_car::Mission recovery_move(routedevation_msgs::msg::Status devation_status,const std::shared_ptr<RouteToPose::Feedback> feedback,
                            const std::shared_ptr<RouteToPose::Result> result,
                            const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
                            kec_car::DrivingMode mode);

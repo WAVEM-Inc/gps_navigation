@@ -207,6 +207,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
 #endif
     cancel_check_= false;
     reject_check_= false;
+    failed_check_= false;
     // 1) goal 수신
     // 2) route_to_pose_goal_handle 호출
     try {
@@ -419,6 +420,10 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
             return;
         }
         else if(reject_check_){
+            cmd_stop();
+            return;
+        }
+        else if(failed_check_){
             cmd_stop();
             return;
         }
@@ -855,7 +860,10 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
             temp_devation_status.offcource_status=false;
         }
         if (temp_devation_status.offcource_status) {
-            recovery_move(temp_devation_status,feedback,result,goal_handle,kec_car::DrivingMode::kStraight);
+            kec_car::Mission recovery_result = recovery_move(temp_devation_status,feedback,result,goal_handle,kec_car::DrivingMode::kStraight);
+            if(recovery_result == kec_car::Mission::kFAILED){
+                return;
+            }
         }// 6-1-3-N) 이탈 되었는가?
         else {
             //직진 주행 추가
@@ -987,7 +995,10 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                             temp_devation_status.offcource_status=false;
                         }
                 if (temp_devation_status.offcource_status) {
-                            recovery_move(temp_devation_status,feedback,result,goal_handle,kec_car::DrivingMode::kCrossroads);
+                            kec_car::Mission recovery_result = recovery_move(temp_devation_status,feedback,result,goal_handle,kec_car::DrivingMode::kCrossroads);
+                            if(recovery_result==kec_car::Mission::kFAILED){
+                                return;
+                            }
                             task_->rotation_straight_check_= true;
                 }// 6-1-3-N) 이탈 되었는가?
 
@@ -1180,7 +1191,7 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
 }
 
 
-void Center::recovery_move(routedevation_msgs::msg::Status devation_status,const std::shared_ptr<RouteToPose::Feedback> feedback,
+kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_status,const std::shared_ptr<RouteToPose::Feedback> feedback,
                            const std::shared_ptr<RouteToPose::Result> result,
                            const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
                            kec_car::DrivingMode mode){
@@ -1197,14 +1208,15 @@ void Center::recovery_move(routedevation_msgs::msg::Status devation_status,const
                     result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
                     goal_handle->abort(result);
                     RCLCPP_INFO(this->get_logger(), "Goal Failed");
-                    return;
+                    failed_check_ = true;
+                    return kec_car::Mission::kFAILED;
                 }
         }
         else {
                 init_distance -=ros_parameter_->rotation_straight_dist_;        
                 while (rclcpp::ok()) {
                     if (cancel_check(result, goal_handle)) {
-                        return;
+                        return kec_car::Mission::kFAILED;
                     }
                     // Goal Gps Setting 
                     GpsData gps_data(devation_status_->offcource_goal_lat,
@@ -1220,6 +1232,17 @@ void Center::recovery_move(routedevation_msgs::msg::Status devation_status,const
                     double recovery_goal_distance = center_distance->distance_from_perpendicular_line(
                             task_->get_cur_gps(), gps_data,
                             car_->get_location());
+
+                    if (car_behavior.car_rotation_judgment(car_->get_degree(), task_->get_cur_heading(), 45) == false) {
+                        if (rclcpp::ok()) {
+                            result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
+                            goal_handle->abort(result);
+                            RCLCPP_INFO(this->get_logger(), "Goal Failed");
+                            failed_check_ = true;
+                            return kec_car::Mission::kFAILED;
+                        }
+                    }
+
 #if DEBUG_MODE == 1
                     RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode]-[setting] angle : %f, gps-lat %f gps-long %f goal-dist %f\n"
                     "car-lat %f car-long %f",
@@ -1260,5 +1283,7 @@ void Center::recovery_move(routedevation_msgs::msg::Status devation_status,const
                     }// 6-1-5) 복귀 목적지 도착 여부 Y
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
+
         }
+    return kec_car::Mission::kSUCCESS;
 }

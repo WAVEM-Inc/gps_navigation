@@ -60,7 +60,10 @@ namespace kec_car {
         kOdomStraight,
         kOdomTurn
     };
-
+    enum class Mission{
+        kSUCCESS,
+        kFAILED
+    };
 }
 
 #endif //ROUTE_TRACKER_KEC_CAR_DATA_HPP
