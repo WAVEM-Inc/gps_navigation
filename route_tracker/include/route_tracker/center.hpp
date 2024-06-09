@@ -24,7 +24,7 @@
 #include "robot_status_msgs/msg/velocity_status.hpp"
 #include "can_msgs/msg/ad_control_body.hpp"
 #include "route_msgs/msg/offset.hpp"
-
+#include "route_msgs/msg/log.hpp"
 //
 #include "common/constants.hpp"
 #include "common/ros_parameter.hpp"
@@ -73,6 +73,7 @@ private :
     rclcpp::Publisher<can_msgs::msg::AdControlBody>::SharedPtr pub_body_;
     rclcpp::Publisher<obstacle_msgs::msg::Status>::SharedPtr pub_obs_event_;
     rclcpp::Publisher<route_msgs::msg::Offset>::SharedPtr pub_imu_offset_;
+    rclcpp::Publisher<route_msgs::msg::Log>::SharedPtr pub_log_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
@@ -92,6 +93,7 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_pub_body_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_obs_event_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_imu_offset_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_log_;
     bool feedback_check_;
     bool obstacle_first_check_;
     int speaker_seq_;
@@ -153,6 +155,8 @@ private :
                            const std::shared_ptr<RouteToPose::Result> result,
                            const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
                            kec_car::DrivingMode mode);
+    void log_publish(double init_dist, double cur_dist,double car_degree ,double node_degree,std::string mode, std::string note);
+    std::string get_time();
 };
 
 

@@ -16,6 +16,7 @@ set( msg_files
   "msg/DriveState.msg"
   "msg/DriveBreak.msg"
   "msg/Offset.msg"
+  "msg/Log.msg"
   "action/RouteToPose.action"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
