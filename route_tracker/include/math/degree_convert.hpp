@@ -11,8 +11,10 @@
 
 class DegreeConvert {
 public:
-    std::pair<int, double> parse_input(float float_input);
+    std::tuple<int, double> parse_input(double input);
     double convert_fraction(double fraction);
+private :
+    int extract_fractional_part(double input);
 };
 
 

@@ -3,20 +3,30 @@
 //
 
 #include "degree_convert.hpp"
+#include <cmath>
+#include <tuple>
 #define SCALE_IMU_OFFSET 1000
 #define STANDARD_IMU_OFFSET 500
 #define DIGIT_IMU_OFFSET 10
 #define DIGIT_STR "0."
-
+#define DIGIT_DIVIDE 10000.0
+#define MAX_DATA 2000
+#define ZERO 0
 /**
  * @brief 입력값을 각도와 소수 부분으로 분리하는 함수
  * @param str_input
  * @return 각도, 오프셋
  */
-std::pair<int, double> DegreeConvert::parse_input(float float_input) {
-    int degrees = static_cast<int>(float_input);
-    float fraction = float_input - static_cast<float>(degrees);
-    return {degrees, fraction};
+std::tuple<int, double> DegreeConvert::parse_input(double input) {
+    int degrees = static_cast<int>(input);
+    double fraction = extract_fractional_part(input);
+    if (fraction == ZERO) {
+        return std::make_tuple(degrees, ZERO);
+    }
+    // Adjust the fractional part based on the specified logic
+    fraction -= SCALE_IMU_OFFSET;
+    fraction /= DIGIT_IMU_OFFSET;
+    return std::make_tuple(degrees, fraction);
 }
 /**
  * @brief 소수 부분을 1000을 기준으로 변환하는 함수
@@ -27,4 +37,17 @@ double DegreeConvert::convert_fraction(double fraction) {
         scaled_fraction -= SCALE_IMU_OFFSET;
     }
     return scaled_fraction / DIGIT_IMU_OFFSET;
+}
+
+int DegreeConvert::extract_fractional_part(double input) {
+    // Calculate the fractional part
+    double fractional_part = input - static_cast<int>(input);
+    // Round the fifth decimal place
+    fractional_part = std::round(fractional_part * DIGIT_DIVIDE) / DIGIT_DIVIDE;
+    // Convert the fractional part to an integer by shifting the decimal point
+    int fractional_digits = static_cast<int>(fractional_part * DIGIT_DIVIDE); // Multiply by 10000 to capture up to 4 decimal places
+    if (fractional_digits>=MAX_DATA) {
+        return ZERO;
+    }
+    return fractional_digits;
 }

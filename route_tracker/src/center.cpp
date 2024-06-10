@@ -256,17 +256,17 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
         DegreeConvert degree_convert;
         route_msgs::msg::Offset imu_offset;
         auto [degrees, fraction] = degree_convert.parse_input(static_cast<float>(task_->get_cur_heading()));
-        double converted_fraction = degree_convert.convert_fraction(fraction);
+
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(),
-                    "[Center]-[route_to_pose_goal_handle]-[imu-offset-setting] %d - %lf\n",degrees,converted_fraction);
+                    "[Center]-[route_to_pose_goal_handle]-[imu-offset-setting] %d - %lf\n",degrees,fraction);
 #endif
-        imu_offset.data = static_cast<float>(converted_fraction);
+        imu_offset.data = static_cast<float>(fraction);
         imu_offset.stamp = this->now();
         pub_imu_offset_->publish(imu_offset);
 
         // EndNode Setting
-        if(task_->get_cur_node_kind()==kec_car::NodeKind::kEndpoint){
+        if(task_->get_next_node_kind()==kec_car::NodeKind::kEndpoint){
             task_->set_cur_degree(static_cast<float>(degrees));
         }
         else {
