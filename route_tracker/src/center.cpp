@@ -284,7 +284,7 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
                 auto [ndegrees, nfraction] = next_dc.parse_input(static_cast<float>(task_->get_next_heading()));
                 next_imu_offset.data = static_cast<float>(nfraction);
                 next_imu_offset.stamp = this->now();
-                task_->set_cur_degree(static_cast<float>(ndegrees));
+                task_->set_next_degree(static_cast<float>(ndegrees));
                 pub_imu_offset_->publish(next_imu_offset);
         }
 
@@ -1233,9 +1233,15 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
                     GpsData temp_goal_degree = gps_data;
 
                       // Goal Angle Setting
-                    double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
-                    task_->set_cur_degree(static_cast<double>(goal_angle));
-                    // 6-1-5) 복귀 목적지 도착 여부 N
+                    //double goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                    //task_->set_cur_degree(static_cast<double>(goal_angle));
+                    double goal_angle=task_->get_cur_heading();
+                    if(devation_status_->offcource_status==true){
+                        goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                        task_->set_cur_degree(static_cast<double>(goal_angle));
+                    }
+
+		    // 6-1-5) 복귀 목적지 도착 여부 N
                     double recovery_goal_distance = center_distance->distance_from_perpendicular_line(
                             task_->get_cur_gps(), gps_data,
                             car_->get_location());
