@@ -277,6 +277,17 @@ Center::route_to_pose_goal_handle(const rclcpp_action::GoalUUID &uuid, std::shar
             double reverse_degree = car_behavior.car_degree_reverse(task_->get_cur_heading());
             task_->set_cur_degree(static_cast<float>(reverse_degree));
         }
+
+        if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
+                DegreeConvert next_dc;
+                route_msgs::msg::Offset next_imu_offset;
+                auto [ndegrees, nfraction] = next_dc.parse_input(static_cast<float>(task_->get_next_heading()));
+                next_imu_offset.data = static_cast<float>(nfraction);
+                next_imu_offset.stamp = this->now();
+                task_->set_cur_degree(static_cast<float>(ndegrees));
+                pub_imu_offset_->publish(next_imu_offset);
+        }
+
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[route_to_pose_goal_handle]-[TaskDegreeSetting]- %f",task_->get_cur_heading());
         DataTypeTrans log_trans;
