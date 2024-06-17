@@ -13,6 +13,7 @@ class DegreeConvert {
 public:
     std::tuple<int, double> parse_input(double input);
     double convert_fraction(double fraction);
+    double convert_wheel_angle(double input_angle);
 private :
     int extract_fractional_part(double input);
 };

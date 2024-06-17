@@ -12,6 +12,9 @@
 #define DIGIT_DIVIDE 10000.0
 #define MAX_DATA 2000
 #define ZERO 0
+
+#define MAX_ANGLE 45.0
+#define MAX_WHEEL 30.0
 /**
  * @brief 입력값을 각도와 소수 부분으로 분리하는 함수
  * @param str_input
@@ -50,4 +53,18 @@ int DegreeConvert::extract_fractional_part(double input) {
         return ZERO;
     }
     return fractional_digits;
+}
+
+/**
+ * @brief 45도 이내 각도를 30도 내로 변환하여 반환 _ 비율 계산
+ * @brief 45도 이상 각도는 45도로 처리
+ * @param input_angle
+ * @return double
+ */
+double DegreeConvert::convert_wheel_angle(double input_angle) {
+    if (input_angle > MAX_ANGLE) {
+        input_angle = MAX_ANGLE;
+    }
+    // 0도에서 45도 사이의 입력 각도를 0에서 30도로 변환
+    return (input_angle / MAX_ANGLE) * MAX_WHEEL;
 }
