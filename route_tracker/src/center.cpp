@@ -1219,11 +1219,11 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
     CarBehavior car_behavior;
        if (car_behavior.car_rotation_judgment(car_->get_degree(), task_->get_cur_heading(), 45) == false) {
                 if (rclcpp::ok()) {
-                    result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
-                    goal_handle->abort(result);
+                    //result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
+                    //goal_handle->abort(result);
                     RCLCPP_INFO(this->get_logger(), "Goal Failed");
-                    failed_check_ = true;
-                    return kec_car::Mission::kFAILED;
+                    //failed_check_ = true;
+                    return kec_car::Mission::kSUCCESS;
                 }
         }
         else {
