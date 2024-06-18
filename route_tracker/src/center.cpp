@@ -393,6 +393,13 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     } else if (task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom) {
         cur_location = task_->get_cur_gps();
     }
+
+#if DEBUG_MODE == 1
+    RCLCPP_INFO(this->get_logger(),
+                "[Center]-[route_to_pose_execute]-[GPS] init cur_ lat %lf cur_long %lf, next_lat %lf next long %lf , time : %s",
+                 task_->get_cur_gps().fn_get_latitude(),task_->get_cur_gps().fn_get_longitude(),
+                task_->get_next_gps().fn_get_latitude(),task_->get_next_gps().fn_get_longitude(),get_time().c_str());
+#endif
     // 점검 필요
 /*    init_distance = center_distance->distance_from_perpendicular_line(task_->get_cur_gps(),
                                                                       task_->get_next_gps(),
@@ -524,7 +531,7 @@ void Center::imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu) {
 }
 
 void Center::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     std::cout << "[Center]-[gps_callback] : " <<
               "latitude : " << gps->latitude << '\n' <<
               "longitude : " << gps->longitude << std::endl;
@@ -622,7 +629,7 @@ void Center::calculate_straight_movement(float acceleration) {
 }
 
 void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     std::cout <<"[Center]-[odom_callback] : "<<
               "position : " << odom->pose.pose.position.x << '\n' <<
               "orientation : " << odom->pose.pose.orientation.x << '\n' <<
@@ -631,7 +638,7 @@ void Center::odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom) {
 }
 
 void Center::route_deviation_callback(const routedevation_msgs::msg::Status::SharedPtr status) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     RCLCPP_INFO(this->get_logger(),"[Center]-[route_deviation_callback] offcource_status : %d lat %f log %f, %d distance : %f"
     , status->offcource_status ,status->offcource_goal_lat,status->offcource_goal_lon, car_->get_drive_mode(), status->offcource_goal_distance);
 #endif
@@ -660,7 +667,7 @@ void Center::route_deviation_callback(const routedevation_msgs::msg::Status::Sha
  * @param status
  */
 void Center::obstacle_status_callback(const obstacle_msgs::msg::Status::SharedPtr status) {
-#if DEBUG_MODE == 2
+#if DEBUG_MODE == 1
     std::cout << "[Center]-[obstacle_status_callback] : " <<
               "obstacle_value : " << status->obstacle_value << '\n' <<
               "obstacle_status : " << static_cast<int>(status->obstacle_status) << std::endl;

@@ -1,8 +1,8 @@
 ros2 action send_goal /route_to_pose route_msgs/action/RouteToPose "start_node:
   node_id: ''
   position:
-    latitude: 36.11371630000005
-    longitude: 128.368213
+    latitude: 36.113812
+    longitude: 128.368222
   type: ''
   kind: 'connecting'
   heading: 8.1023
@@ -12,8 +12,8 @@ ros2 action send_goal /route_to_pose route_msgs/action/RouteToPose "start_node:
 end_node:
   node_id: ''
   position:
-    latitude: 36.11389810000103
-    longitude: 128.368213
+    latitude: 36.113812
+    longitude: 128.368680
   type: ''
   kind: 'connecting'
   heading: 140
