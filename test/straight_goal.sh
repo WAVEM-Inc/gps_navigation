@@ -5,7 +5,7 @@ ros2 action send_goal /route_to_pose route_msgs/action/RouteToPose "start_node:
     longitude: 128.368222
   type: ''
   kind: 'connecting'
-  heading: 8.1023
+  heading: 270.1023
   direction: ''
   driving_option: 'gps'
   detection_range: []

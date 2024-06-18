@@ -6,8 +6,8 @@ ros2 topic pub /sensor/ublox/fix sensor_msgs/msg/NavSatFix "header:
 status:
   status: 0
   service: 0
-latitude: 36.1138072
-longitude: 128.3674185
+latitude: 0 
+longitude: 0
 altitude: 0.0
 position_covariance:
 - 0.0
