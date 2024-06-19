@@ -1215,12 +1215,14 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
     }
     else{
         if(std::fabs(car_->get_speed()) < max_speed/3.6){
+       // if(std::fabs(car_->get_speed()/3.6) < max_speed){
             max_speed = std::fabs(car_->get_speed()/3.6);
         }
         cur_speed = max_speed * goal_dist/brake_dist;
         if(cur_speed <= 0.20001){
             cur_speed = 0.2;
         }
+  
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting]-[Result] cur_speed %f cur_car %f", cur_speed,car_->get_speed() );
 #endif
@@ -1245,7 +1247,7 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
                 if (rclcpp::ok()) {
                     //result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
                     //goal_handle->abort(result);
-                    RCLCPP_INFO(this->get_logger(), "Goal Failed");
+                    RCLCPP_INFO(this->get_logger(), "Recovery Goal Failed");
                     //failed_check_ = true;
                     return kec_car::Mission::kSUCCESS;
                 }
@@ -1269,6 +1271,13 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
                     double goal_angle=task_->get_cur_heading();
                     if(devation_status_->offcource_status==true){
                         goal_angle = center_distance->calculate_line_angle(temp_car_degree, temp_goal_degree);
+                        if (car_behavior.car_rotation_judgment(car_->get_degree(), goal_angle, 45) == false) {
+                                //result->result = static_cast<int>(kec_driving_code::Result::kAborted);
+                                //goal_handle->abort(result);
+                                RCLCPP_INFO(this->get_logger(), "Recovery while Angle Goal Failed");
+                                //failed_check_ = true;
+                                return kec_car::Mission::kSUCCESS;
+                        }
                         task_->set_cur_degree(static_cast<double>(goal_angle));
                     }
 
@@ -1276,16 +1285,6 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
                     double recovery_goal_distance = center_distance->distance_from_perpendicular_line(
                             task_->get_cur_gps(), gps_data,
                             car_->get_location());
-
-                    if (car_behavior.car_rotation_judgment(car_->get_degree(), task_->get_cur_heading(), 45) == false) {
-                        if (rclcpp::ok()) {
-                            result->result = static_cast<int>(kec_driving_code::Result::kAborted);
-                            goal_handle->abort(result);
-                            RCLCPP_INFO(this->get_logger(), "Goal Failed");
-                            failed_check_ = true;
-                            return kec_car::Mission::kFAILED;
-                        }
-                    }
 
 #if DEBUG_MODE == 1
                     RCLCPP_INFO(this->get_logger(), "[Center]-[straight_move]-[recovery mode]-[setting] angle : %f, gps-lat %f gps-long %f goal-dist %f\n"
