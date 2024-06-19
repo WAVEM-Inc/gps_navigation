@@ -3,7 +3,7 @@
 //
 
 #include <utility>
-
+#include <cmath>
 #include "route_tracker/center.hpp"
 #include "code/kec_driving_data_code.hpp"
 #include "distance.hpp"
@@ -17,6 +17,7 @@
 #define MAX_DIRECTION 45
 #define DRIVING_INFO_HZ 100
 using namespace std::chrono_literals;
+#define ERROR_CODE "206"
 
 Center::Center() : Node("route_tracker_node"), feedback_check_(false), waiting_check_(false),obstacle_first_check_(false),speaker_seq_(0),prev_speed_(0),init_distance(0){
     RCLCPP_INFO(this->get_logger(),
@@ -187,6 +188,10 @@ void Center::ros_init() {
     pub_log_options.callback_group =cbg_pub_log_;
     pub_log_ = this->create_publisher<route_msgs::msg::Log>("route_tracker_log",default_qos,
                                                                pub_log_options);
+    rclcpp::PublisherOptions pub_error_status_options;
+    pub_error_status_options.callback_group = cbg_pub_error_status_;
+    pub_error_ = this->create_publisher<std_msgs::msg::String>(constants_->tp_name_error_status_,default_qos,
+                                                               pub_error_status_options);
 
     // 로봇 모드 timer
     //   ㄴ speaker timer
@@ -383,6 +388,9 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     if (cancel_check(result, goal_handle)) {
         return;
     }
+
+    sensor_nan_checkout();
+
     GpsData cur_location;
     if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
         double car_latitude = car_->get_location().fn_get_latitude();
@@ -412,6 +420,15 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
     RCLCPP_INFO(this->get_logger(),
                 "[Center]-[route_to_pose_execute]-[INIT_SETTING] init - %lf, time : %s", init_distance,get_time().c_str());
 #endif
+/*    if(std::isnan(init_distance)){
+        std_msgs::msg::String error_code;
+        error_code.data=ERROR_CODE;
+        pub_error_->publish(error_code);
+        result->result = static_cast<int>(kec_driving_code::Result::kAborted);
+        goal_handle->abort(result);
+        RCLCPP_INFO(this->get_logger(), "Goal Failed");
+        failed_check_ = true;
+    }*/
 
     if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
 #if DEBUG_MODE == 1
@@ -1262,7 +1279,7 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
 
                     if (car_behavior.car_rotation_judgment(car_->get_degree(), task_->get_cur_heading(), 45) == false) {
                         if (rclcpp::ok()) {
-                            result->result = static_cast<int>(kec_driving_code::Result::kFailedErrorRoute);
+                            result->result = static_cast<int>(kec_driving_code::Result::kAborted);
                             goal_handle->abort(result);
                             RCLCPP_INFO(this->get_logger(), "Goal Failed");
                             failed_check_ = true;
@@ -1335,4 +1352,14 @@ std::string Center::get_time() {
     std::stringstream ss;
     ss << std::fixed << std::setprecision(9) << now.seconds();
     return ss.str();
+}
+
+void Center::sensor_nan_checkout(){
+    // gps check
+    while(rclcpp::ok()){
+        if(std::isnan(car_->get_location().fn_get_latitude())==false&&
+            std::isnan(car_->get_location().fn_get_longitude())==false){
+            break;
+        }
+    }
 }

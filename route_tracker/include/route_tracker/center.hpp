@@ -14,6 +14,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "std_msgs/msg/string.hpp"
 
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
@@ -74,6 +75,7 @@ private :
     rclcpp::Publisher<obstacle_msgs::msg::Status>::SharedPtr pub_obs_event_;
     rclcpp::Publisher<route_msgs::msg::Offset>::SharedPtr pub_imu_offset_;
     rclcpp::Publisher<route_msgs::msg::Log>::SharedPtr pub_log_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_error_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
@@ -94,6 +96,7 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_pub_obs_event_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_imu_offset_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_log_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_error_status_;
     bool feedback_check_;
     bool obstacle_first_check_;
     int speaker_seq_;
@@ -157,6 +160,8 @@ private :
                            kec_car::DrivingMode mode);
     void log_publish(double init_dist, double cur_dist,double car_degree ,double node_degree,std::string mode, std::string note);
     std::string get_time();
+
+    void sensor_nan_checkout();
 };
 
 
