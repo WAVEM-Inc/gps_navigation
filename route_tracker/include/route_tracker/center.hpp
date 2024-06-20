@@ -115,6 +115,7 @@ private :
     std::condition_variable cv_;
     bool waiting_check_;
     bool max_speed_check_;
+    double prev_max_speed_;
     float prev_speed_; // 가속을 위함.
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;

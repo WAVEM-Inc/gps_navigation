@@ -391,6 +391,7 @@ void Center::route_to_pose_execute(const std::shared_ptr<RouteToPoseGoalHandler>
 
     sensor_nan_checkout();
     max_speed_check_ = false;
+    prev_max_speed_ = 0;
     GpsData cur_location;
     if (task_->get_cur_driving_option() == kec_car::DrivingOption::kGps) {
         double car_latitude = car_->get_location().fn_get_latitude();
@@ -1216,8 +1217,14 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
     else{
         if(max_speed_check_ == false){
             max_speed_check_ = true;
-            max_speed = std::fabs(car_->get_speed()/3.6);
+            prev_max_speed_= std::fabs(car_->get_speed()/3.6);
+            max_speed = prev_max_speed_;
         }
+        else {
+            max_speed = prev_max_speed_;
+        }
+
+
         cur_speed = max_speed * goal_dist/brake_dist;
         if(cur_speed <= 0.20001){
             cur_speed = 0.2;
