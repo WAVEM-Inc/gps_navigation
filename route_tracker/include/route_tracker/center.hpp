@@ -125,7 +125,7 @@ private :
     void ros_init();
     void cmd_stop();
     float speed_setting(float goal_dist, float brake_dist);
-    float speed_setting(const float goal_dist, const float init_dist, const float brake_dist);
+    float speed_setting(const float goal_dist, float init_dist, const float brake_dist);
     rclcpp_action::GoalResponse route_to_pose_goal_handle(
             const rclcpp_action::GoalUUID& uuid,
             std::shared_ptr<const RouteToPose::Goal> goal
