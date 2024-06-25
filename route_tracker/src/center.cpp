@@ -1399,5 +1399,5 @@ void Center::gps_show(GpsData gps,std::string str_name){
     RCLCPP_INFO(this->get_logger(),"[GPS SHOW]-[%s]-lat %lf, long %lf",
                 str_name.c_str()
                 ,gps.fn_get_latitude(),
-                gps.fn_set_longitude());
+                gps.fn_get_longitude());
 }
