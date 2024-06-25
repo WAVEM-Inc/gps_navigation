@@ -773,7 +773,7 @@ bool Center::cancel_check(const std::shared_ptr<RouteToPose::Result> result,
     if (goal_handle->is_canceling()) {
         result->result = static_cast<int>(kec_driving_code::Result::kFailedCancel);
         goal_handle->canceled(result);
-        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        RCLCPP_INFO(this->get_logger(), "==============Goal canceled==============");
         cancel_check_ = true;
         return true;
     }
@@ -842,6 +842,7 @@ void Center::straight_move(const std::shared_ptr<RouteToPose::Feedback> feedback
 
     double straight_brake_pressure=0;
     // 직진 주행을 위한 반복문
+    RCLCPP_INFO(this->get_logger(), "==============StraightMove==============");
     while (rclcpp::ok()) {
         if (cancel_check(result, goal_handle)) {
             return;
@@ -983,6 +984,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                 // 2-7) 교차로 노드 헤딩 정보로 방향 확인
 #if DEBUG_MODE == 1
                 RCLCPP_INFO(this->get_logger(), "[turn_move mode] Turn goal Success");
+                RCLCPP_INFO(this->get_logger(), "==============TurnMoveCross ING==============");
 #endif
                 task_->rotation_straight_check_ = true;
                 double next_node_heading = task_->get_next_heading();
@@ -997,6 +999,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
                     //
                 } else {
                     // 2-9) 종료
+                    RCLCPP_INFO(this->get_logger(), "==============TurnMoveCross End==============");
                     car_->set_drive_mode(kec_car::DrivingMode::kStop);
 /*                    geometry_msgs::msg::Twist turn_success;
                     turn_success.linear.x = 0;
@@ -1013,7 +1016,7 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
             } else {
                 //2-6-2) 도착하지 않음
 #if DEBUG_MODE == 1
-                RCLCPP_INFO(this->get_logger(), "[turn_move mode]-[straight] start");
+                RCLCPP_INFO(this->get_logger(), "==============TurnMoveStraight ING==============");
 #endif
                 car_->set_drive_mode(kec_car::DrivingMode::kStraight);
                 routedevation_msgs::msg::Status temp_devation_status;
@@ -1090,6 +1093,7 @@ void Center::odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
         }
         goal_distance = init_goal_dist - std::fabs(car_->get_odom_location() - odom_setting_pose);
 #if DEBUG_MODE == 1
+        RCLCPP_INFO(this->get_logger(), "==============ODOM MOVE ING==============");
         RCLCPP_INFO(this->get_logger(), "[Center]-[Dist]-[odom_move] init %lf - goal %lf, odom %lf, odom init %lf", init_goal_dist, goal_distance, car_->get_odom_location(),odom_setting_pose);
         log_publish(init_goal_dist,goal_distance,car_->get_degree(),task_->get_cur_heading(),"odom_move","ING");
 #endif
@@ -1178,7 +1182,7 @@ void Center::brake_unlock() {
     pub_break_->publish(temp_break);
 }
 
-float Center::speed_setting(const float goal_dist, const float init_dist, const float brake_dist) {
+float Center::speed_setting(const float goal_dist, float init_dist, const float brake_dist) {
     float cur_speed = 0;
     float max_speed = 0;
 
@@ -1190,6 +1194,9 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
     }
     else{
         max_speed = ros_parameter_->max_speed_;
+    }
+    if(task_->get_next_node_kind()==kec_car::NodeKind::kIntersection){
+        init_dist -= ros_parameter_->rotation_straight_dist_;
     }
     //== settting
 
@@ -1204,11 +1211,21 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
                 RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] prev %f, turn acc",prev_speed_,ros_parameter_->turn_acc_);
         #endif
         return 0.5;
-            /*if(goal_dist>brake_dist){
-
+        /*CarBehavior car_behavior;
+        if(car_behavior.car_rotation_judgment(goal_dist,brake_dist,5)==false){
+            cur_speed = prev_speed_+ros_parameter_->turn_acc_;
+            if(cur_speed >= max_speed){
+                cur_speed = max_speed;
             }
-            cur_speed = prev_speed_+ros_parameter_->turn_acc_;*/
+        }
+        else{
+            cur_speed = prev_speed_-ros_parameter_->turn_acc_;
+            if(cur_speed <= 0.20001){
+                cur_speed = 0.2;
+            }
+        }*/
     }
+
     if(goal_dist > brake_dist) {
         if (prev_speed_ >= max_speed) {
             cur_speed = max_speed;
@@ -1247,6 +1264,7 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
                            kec_car::DrivingMode mode){
     #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[recovery_move]-[Start]");
+    RCLCPP_INFO(this->get_logger(), "==============RecoveryMOVE START==============");
     #endif
     std::unique_ptr<Distance> center_distance = std::make_unique<Distance>();
     double braking_distance = center_distance->distance_braking_calculate(ros_parameter_->max_speed_*3.6,ros_parameter_->friction_coefficient_);
@@ -1265,6 +1283,7 @@ kec_car::Mission Center::recovery_move(routedevation_msgs::msg::Status devation_
         else {
                 init_distance -=ros_parameter_->rotation_straight_dist_;        
                 while (rclcpp::ok()) {
+                    RCLCPP_INFO(this->get_logger(), "==============RecoveryMOVE ING==============");
                     if (cancel_check(result, goal_handle)) {
                         return kec_car::Mission::kFAILED;
                     }
