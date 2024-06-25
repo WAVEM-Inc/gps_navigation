@@ -164,6 +164,7 @@ private :
     std::string get_time();
 
     void sensor_nan_checkout();
+    void gps_show(GpsData gps,std::string str_name);
 };
 
 
