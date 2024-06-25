@@ -1197,21 +1197,24 @@ float Center::speed_setting(const float goal_dist, const float init_dist, const 
         #if DEBUG_MODE == 1
             RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] low init dist %f, brake_dist",init_dist,brake_dist);
         #endif
-        return 0.4;
+        return 0.6;
+    }
+    if(init_dist == -1){
+        #if DEBUG_MODE == 1
+                RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] prev %f, turn acc",prev_speed_,ros_parameter_->turn_acc_);
+        #endif
+        return 0.6;
+            /*if(goal_dist>brake_dist){
+
+            }
+            cur_speed = prev_speed_+ros_parameter_->turn_acc_;*/
     }
     if(goal_dist > brake_dist) {
         if (prev_speed_ >= max_speed) {
             cur_speed = max_speed;
         } else {
-            if(init_dist==-1){
-                #if DEBUG_MODE == 1
-            RCLCPP_INFO(this->get_logger(), "[Center]-[speed_setting] prev %f, turn acc",prev_speed_,ros_parameter_->turn_acc_);
-                #endif
-                cur_speed = prev_speed_+ros_parameter_->turn_acc_;
-            }
-            else{
                 cur_speed = prev_speed_+ros_parameter_->start_acc_;
-            }
+
         }
     }
     else{
