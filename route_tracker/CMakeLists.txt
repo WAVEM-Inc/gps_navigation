@@ -70,6 +70,8 @@ set(source_list
         src/math/car_behavior.cpp
         include/math/car_behavior.hpp
         include/common/test.h
+        src/math/degree_convert.cpp
+        include/math/degree_convert.hpp
 )
 
 set(node_name

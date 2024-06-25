@@ -78,11 +78,19 @@ public:
             if (it != driving_option_map.end()) {
                 return it->second;
             } else {
-                // 기본값으로 전진 방향 설정
                 return DO::kGps;
             }
     }
-
+    std::string drive_option_to_string(const kec_car::DrivingOption mode) {
+            switch (mode) {
+                    case kec_car::DrivingOption::kGps:
+                            return "kGps"; //  "직진"
+                    case kec_car::DrivingOption::kOdom:
+                            return "kOdom"; //  "복귀"
+                    default:
+                            return "Unknown Driving Mode";
+            }//switch
+    }//drive_mode_to_string
 };
 
 

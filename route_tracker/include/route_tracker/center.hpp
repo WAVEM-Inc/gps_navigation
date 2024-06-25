@@ -14,6 +14,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "std_msgs/msg/string.hpp"
 
 // custom msg
 #include "route_msgs/action/route_to_pose.hpp"
@@ -23,7 +24,8 @@
 #include "obstacle_msgs/msg/status.hpp"
 #include "robot_status_msgs/msg/velocity_status.hpp"
 #include "can_msgs/msg/ad_control_body.hpp"
-
+#include "route_msgs/msg/offset.hpp"
+#include "route_msgs/msg/log.hpp"
 //
 #include "common/constants.hpp"
 #include "common/ros_parameter.hpp"
@@ -31,6 +33,7 @@
 #include "entity/car.hpp"
 #include "task.hpp"
 #include "math/car_behavior.hpp"
+#include "math/degree_convert.hpp"
 /**
  * @brief
  *  [ ] action_server
@@ -48,6 +51,8 @@ public :
 private :
     double init_distance ;
     bool cancel_check_;
+    bool reject_check_;
+    bool failed_check_;
     //field
     using RouteToPose = route_msgs::action::RouteToPose;
     using RouteToPoseGoalHandler = rclcpp_action::ServerGoalHandle<RouteToPose>;
@@ -68,6 +73,9 @@ private :
     rclcpp::Publisher<route_msgs::msg::DriveState>::SharedPtr pub_drive_state_;
     rclcpp::Publisher<can_msgs::msg::AdControlBody>::SharedPtr pub_body_;
     rclcpp::Publisher<obstacle_msgs::msg::Status>::SharedPtr pub_obs_event_;
+    rclcpp::Publisher<route_msgs::msg::Offset>::SharedPtr pub_imu_offset_;
+    rclcpp::Publisher<route_msgs::msg::Log>::SharedPtr pub_log_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_error_;
     //field timer
     rclcpp::TimerBase::SharedPtr timer_drive_state_;
     rclcpp::TimerBase::SharedPtr timer_ptr_;
@@ -86,6 +94,9 @@ private :
     rclcpp::CallbackGroup::SharedPtr cbg_odom_euler_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_body_;
     rclcpp::CallbackGroup::SharedPtr cbg_pub_obs_event_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_imu_offset_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_log_;
+    rclcpp::CallbackGroup::SharedPtr cbg_pub_error_status_;
     bool feedback_check_;
     bool obstacle_first_check_;
     int speaker_seq_;
@@ -103,6 +114,8 @@ private :
     std::mutex goal_mutex_;
     std::condition_variable cv_;
     bool waiting_check_;
+    bool max_speed_check_;
+    double prev_max_speed_;
     float prev_speed_; // 가속을 위함.
     std::shared_ptr<obstacle_msgs::msg::Status> obs_status_;
     std::shared_ptr<routedevation_msgs::msg::Status> devation_status_;
@@ -143,6 +156,14 @@ private :
     void straight_move_correction(float acceleration);
     void odom_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle);
     void turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,const std::shared_ptr<RouteToPose::Result>result , const std::shared_ptr<RouteToPoseGoalHandler>goal_handle,CarBehavior car_behavior);
+    kec_car::Mission recovery_move(routedevation_msgs::msg::Status devation_status,const std::shared_ptr<RouteToPose::Feedback> feedback,
+                           const std::shared_ptr<RouteToPose::Result> result,
+                           const std::shared_ptr<RouteToPoseGoalHandler> goal_handle,
+                           kec_car::DrivingMode mode);
+    void log_publish(double init_dist, double cur_dist,double car_degree ,double node_degree,std::string mode, std::string note);
+    std::string get_time();
+
+    void sensor_nan_checkout();
 };
 
 

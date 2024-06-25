@@ -33,7 +33,7 @@ public :
     double get_next_heading();
     kec_car::DrivingOption get_cur_driving_option();
     kec_car::Direction get_cur_dir();
-
+    void set_next_degree(float degree);
 };
 
 

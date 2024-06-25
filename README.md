@@ -2,13 +2,13 @@
 auto-driving package with gps
 
 ### DEV
-![FrameWork](https://img.shields.io/badge/ROS2-orange?style=for-the-badge&logo=ros&logoColor=white)
-
+![FrameWork](https://img.shields.io/badge/ros2-humble-blue?style=for-the-badge&logo=ROS&logoColor=White)
+![OS](https://img.shields.io/badge/ubuntu-22.04-red?style=for-the-badge&logo=Ubuntu&logoColor=%23FFFFFF)
+![CPP](https://img.shields.io/badge/C%2B%2B-C17-GREEN?style=for-the-badge&logo=C%2B%2B&logoColor=%23FFFFFF)
 ### Project
 ![Project](https://img.shields.io/badge/KEC-blue?style=for-the-badge)
 
 ### Struct
-* KEC
 ```
 ├── route_tracker
 │    ├── include
@@ -34,13 +34,14 @@ auto-driving package with gps
         routedevation_msgs
         obstacle_msgs
         robot_status_msgs
+        can_msgs
 
 2. Build
     $ colcon build --install--symlink
     $ ros2 interface list | grep route
 ```
 
-### Setting 
+### Parameter Setting 
 ```
     $ vi param kec_route_trakcer.yaml
 ```
@@ -58,19 +59,30 @@ auto-driving package with gps
 * /cmd_vel
 * /drive/break
 * /drive/info
+* /drive/can/ad_control_body
+* /drive/obstacle/event
+* /drive/odom/offset
+* /route_tracker_log
 ```
 ##### 1.2. Subscribe
 ```
 * /sensor/imu/data
 * /sensor/ublox/fix
-* /odom
+* /drive/odom/origin
+* /drive/odom/eular
 * /drive/route_deviation/status
 * /drive/obstacle/status
 * /drive/velocity/state
-
 ```
 #### 2. Action
 ##### 2.1 Goal Service
 ```
 * /drive/route_to_pose
+```
+##### 2.2 Action Struct
+```
+├── Tree
+     ├── Action Goal
+     ├── Action Result
+     └── Action FeedBack
 ```
