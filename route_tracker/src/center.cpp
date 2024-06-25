@@ -932,6 +932,9 @@ void Center::turn_move(const std::shared_ptr<RouteToPose::Feedback> feedback,
 #if DEBUG_MODE == 1
         RCLCPP_INFO(this->get_logger(), "[Center]-[Dist]-[turn_move_straight]-[gps] init %lf", turn_straight_init_distance);
         log_publish(turn_straight_init_distance,0,car_->get_degree(),task_->get_cur_heading(),"turn_straight","gps_setting");
+        gps_show(task_->get_cur_gps(),"cur");
+        gps_show(task_->get_next_gps(),"goal");
+        gps_show(car_->get_location(),"car");
 #endif
     }
     else if(task_->get_cur_driving_option() == kec_car::DrivingOption::kOdom){
@@ -1390,4 +1393,11 @@ void Center::sensor_nan_checkout(){
             break;
         }
     }
+}
+
+void Center::gps_show(GpsData gps,std::string str_name){
+    RCLCPP_INFO(this->get_logger(),"[GPS SHOW]-[%s]-lat %lf, long %lf",
+                str_name.c_str()
+                ,gps.fn_get_latitude(),
+                gps.fn_set_longitude());
 }
